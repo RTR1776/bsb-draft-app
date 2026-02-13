@@ -81,12 +81,6 @@ export default function Home() {
     return players.sort((a, b) => b.fpts - a.fpts)
   }, [searchQuery, store.draftState.activeCategory, posFilter, store, fuse, showAllPlayers, showDrafted])
 
-  // Max FPTS for spark bar scaling
-  const maxFpts = useMemo(() => {
-    const undrafted = displayPlayers.filter(p => !p.drafted)
-    return undrafted.length > 0 ? undrafted[0].fpts : 1
-  }, [displayPlayers])
-
   // Live scarcity
   const { scarcity, remaining } = store.getLiveScarcity()
   const maxScarcity = Math.max(...Object.values(scarcity), 1)
@@ -135,10 +129,15 @@ export default function Home() {
   const activeCatPickCount = store.draftState.activeCategory
     ? store.getCategoryPickCount(store.draftState.activeCategory) : 0
 
-  // Determine if we're showing pitchers for header
-  const showingPitchers = (store.draftState.activeCategory && !showAllPlayers)
-    ? (activeCat?.type === 'pitcher')
-    : (posFilter === 'SP' || posFilter === 'RP' || posFilter === 'P')
+  // Determine header mode: 'batter' | 'pitcher' | 'mixed'
+  const headerMode: 'batter' | 'pitcher' | 'mixed' = (() => {
+    if (store.draftState.activeCategory && !showAllPlayers) {
+      return activeCat?.type === 'pitcher' ? 'pitcher' : 'batter'
+    }
+    if (posFilter === 'SP' || posFilter === 'RP' || posFilter === 'P') return 'pitcher'
+    if (posFilter && posFilter !== 'SP' && posFilter !== 'RP' && posFilter !== 'P') return 'batter'
+    return 'mixed'
+  })()
 
   return (
     <div className="h-screen flex flex-col overflow-hidden">
@@ -325,8 +324,16 @@ export default function Home() {
             <span className="text-center">Tm</span>
             <span className="text-right">Pts</span>
             <span className="text-right text-green-400/60">VORP</span>
-            {/* 5 scoring columns — switch labels based on context */}
-            {!showingPitchers ? (
+            {/* 5 scoring columns — switch labels based on header mode */}
+            {headerMode === 'pitcher' ? (
+              <>
+                <span className="text-right">IP</span>
+                <span className="text-right">K</span>
+                <span className="text-right">W</span>
+                <span className="text-right">SV</span>
+                <span className="text-right">HLD</span>
+              </>
+            ) : headerMode === 'batter' ? (
               <>
                 <span className="text-right">R</span>
                 <span className="text-right">TB</span>
@@ -336,17 +343,24 @@ export default function Home() {
               </>
             ) : (
               <>
-                <span className="text-right">IP</span>
-                <span className="text-right">K</span>
-                <span className="text-right">W</span>
-                <span className="text-right">SV</span>
-                <span className="text-right">HLD</span>
+                <span className="text-right flex flex-col leading-tight"><span>R</span><span className="text-white/20">IP</span></span>
+                <span className="text-right flex flex-col leading-tight"><span>TB</span><span className="text-white/20">K</span></span>
+                <span className="text-right flex flex-col leading-tight"><span>BB</span><span className="text-white/20">W</span></span>
+                <span className="text-right flex flex-col leading-tight"><span>RBI</span><span className="text-white/20">SV</span></span>
+                <span className="text-right flex flex-col leading-tight"><span>SB</span><span className="text-white/20">HLD</span></span>
               </>
             )}
             {/* Separator */}
             <span></span>
             {/* 4 traditional columns */}
-            {!showingPitchers ? (
+            {headerMode === 'pitcher' ? (
+              <>
+                <span className="text-right text-white/25">ERA</span>
+                <span className="text-right text-white/25">WHIP</span>
+                <span className="text-right text-white/25">K/9</span>
+                <span className="text-right text-white/25">QS</span>
+              </>
+            ) : headerMode === 'batter' ? (
               <>
                 <span className="text-right text-white/25">AVG</span>
                 <span className="text-right text-white/25">OPS</span>
@@ -355,10 +369,10 @@ export default function Home() {
               </>
             ) : (
               <>
-                <span className="text-right text-white/25">ERA</span>
-                <span className="text-right text-white/25">WHIP</span>
-                <span className="text-right text-white/25">K/9</span>
-                <span className="text-right text-white/25">QS</span>
+                <span className="text-right flex flex-col leading-tight text-white/25"><span>AVG</span><span className="text-white/15">ERA</span></span>
+                <span className="text-right flex flex-col leading-tight text-white/25"><span>OPS</span><span className="text-white/15">WHIP</span></span>
+                <span className="text-right flex flex-col leading-tight text-white/25"><span>HR</span><span className="text-white/15">K/9</span></span>
+                <span className="text-right flex flex-col leading-tight text-white/25"><span>SB</span><span className="text-white/15">QS</span></span>
               </>
             )}
             {/* Tag column */}
@@ -376,7 +390,6 @@ export default function Home() {
                 showRole={player.pos === 'P'}
                 isRecommended={recIds.has(player.id)}
                 recRank={recommendations.findIndex(r => r.id === player.id) + 1}
-                maxFpts={maxFpts}
                 pana={panaMap[player.id] || 0}
               />
             ))}

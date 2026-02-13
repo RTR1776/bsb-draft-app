@@ -4,7 +4,7 @@ import { PosBadge } from './PosBadge'
 import { GRID_COLS, tierRowBg, teamAbbrev } from './constants'
 
 export function PlayerRow({
-  player, rank, onDraft, onUndraft, onRightClick, showRole, isRecommended, recRank, maxFpts, pana
+  player, rank, onDraft, onUndraft, onRightClick, showRole, isRecommended, recRank, pana
 }: {
   player: Player; rank: number
   onDraft: (id: string) => void
@@ -13,11 +13,9 @@ export function PlayerRow({
   showRole?: boolean
   isRecommended?: boolean
   recRank?: number
-  maxFpts: number
   pana: number
 }) {
   const isPitcher = player.pos === 'P'
-  const sparkPct = maxFpts > 0 ? Math.min((player.fpts / maxFpts) * 100, 100) : 0
 
   // VORP color
   const vorpColor = (player.vorp || 0) > 30
@@ -36,7 +34,7 @@ export function PlayerRow({
 
   return (
     <div
-      className={`player-row grid items-center px-2 py-1 text-[11px] font-mono ${
+      className={`player-row grid items-center px-2 py-1 text-xs font-mono ${
         player.drafted ? 'drafted' : ''
       } ${tierBg} ${recBorder} ${rank % 2 === 0 && !tierBg ? 'bg-white/[0.02]' : ''}`}
       style={{ gridTemplateColumns: GRID_COLS }}
@@ -70,18 +68,11 @@ export function PlayerRow({
       </span>
       {/* Team */}
       <span className="text-[10px] text-bsb-dim text-center">{player.team}</span>
-      {/* FPTS with spark bar */}
-      <span className="flex flex-col items-end gap-0">
-        <span className={`text-xs font-bold leading-none ${
-          player.drafted ? 'text-bsb-dim font-normal' : 'text-bsb-gold'
-        }`}>
-          {player.fpts}
-        </span>
-        {!player.drafted && (
-          <span className="w-full h-[2px] bg-white/5 rounded-full mt-0.5">
-            <span className="block h-full rounded-full bg-bsb-gold/40" style={{ width: `${sparkPct}%` }} />
-          </span>
-        )}
+      {/* FPTS */}
+      <span className={`text-right text-xs font-bold ${
+        player.drafted ? 'text-bsb-dim font-normal' : 'text-bsb-gold'
+      }`}>
+        {player.fpts}
       </span>
       {/* VORP */}
       <span className={`text-right text-[10px] font-bold ${player.drafted ? 'text-white/15' : vorpColor}`}>

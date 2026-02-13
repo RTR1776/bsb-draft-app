@@ -80,5 +80,5 @@ export function tierBadge(tier?: number): string {
 }
 
 // CSS grid template
-// #(28) POS(44) NAME(flex) TM(36) FPTS(56) VORP(44) | S1(38) S2(38) S3(34) S4(38) S5(34) | D1(42) D2(34) D3(38) D4(34) | TAG(40)
-export const GRID_COLS = '[rank]28px [pos]44px [name]1fr [team]36px [fpts]56px [vorp]44px [s1]38px [s2]38px [s3]34px [s4]38px [s5]34px [sep]12px [d1]42px [d2]34px [d3]38px [d4]34px [tag]40px'
+// #(28) POS(44) NAME(flex) TM(36) FPTS(52) VORP(48) | S1(42) S2(42) S3(38) S4(42) S5(38) | D1(46) D2(40) D3(42) D4(40) | TAG(40)
+export const GRID_COLS = '[rank]28px [pos]44px [name]1fr [team]36px [fpts]52px [vorp]48px [s1]42px [s2]42px [s3]38px [s4]42px [s5]38px [sep]12px [d1]46px [d2]40px [d3]42px [d4]40px [tag]40px'
