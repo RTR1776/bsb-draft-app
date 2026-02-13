@@ -22,6 +22,15 @@ export type Player = {
   posRank?: number | null
   vorp?: number
   tier?: number  // 1-5
+  // bio fields (from MLB Stats API)
+  age?: number
+  bats?: string        // 'R', 'L', 'S' (switch)
+  throws?: string      // 'R', 'L'
+  height?: string      // e.g. "6' 7\""
+  weight?: number      // e.g. 282
+  mlbDebut?: string    // e.g. "2016-08-13"
+  birthCountry?: string
+  histFpts?: Record<string, number>  // e.g. { "2022": 450, "2023": 520, "2024": 610 }
   // batter stats
   pa?: number; r?: number; hr?: number; rbi?: number; sb?: number; bb?: number
   avg?: number; tb?: number; obp?: number; slg?: number; ops?: number; war?: number

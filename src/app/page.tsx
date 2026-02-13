@@ -6,6 +6,7 @@ import Fuse from 'fuse.js'
 // Components
 import { TEAM_NAMES, GRID_COLS, teamAbbrev, teamColor } from '@/components/constants'
 import { PlayerRow } from '@/components/PlayerRow'
+import { PlayerCard } from '@/components/PlayerCard'
 import { TemplatePanel, TemplateDetail } from '@/components/TemplatePanel'
 import { CategorySelector } from '@/components/CategorySelector'
 import { DashboardStrip } from '@/components/DashboardStrip'
@@ -29,6 +30,9 @@ export default function Home() {
   const [contextMenu, setContextMenu] = useState<{
     x: number; y: number; playerId: string; playerName: string
   } | null>(null)
+
+  // Player card modal state
+  const [cardPlayer, setCardPlayer] = useState<Player | null>(null)
 
   // Keyboard shortcut
   useEffect(() => {
@@ -147,6 +151,17 @@ export default function Home() {
           x={contextMenu.x} y={contextMenu.y}
           playerId={contextMenu.playerId} playerName={contextMenu.playerName}
           onDraft={store.draftPlayer} onClose={() => setContextMenu(null)}
+        />
+      )}
+
+      {/* Player Card Modal */}
+      {cardPlayer && (
+        <PlayerCard
+          player={cardPlayer}
+          pana={panaMap[cardPlayer.id] || store.getPANA(cardPlayer)}
+          onClose={() => setCardPlayer(null)}
+          onDraft={(id) => store.draftPlayer(id, 0)}
+          allPlayers={store.allPlayers}
         />
       )}
 
@@ -387,6 +402,7 @@ export default function Home() {
                 onDraft={(id) => store.draftPlayer(id, 0)}
                 onUndraft={(id) => store.undraftPlayer(id)}
                 onRightClick={handleRightClick}
+                onNameClick={(p) => setCardPlayer(p)}
                 showRole={player.pos === 'P'}
                 isRecommended={recIds.has(player.id)}
                 recRank={recommendations.findIndex(r => r.id === player.id) + 1}
@@ -402,7 +418,8 @@ export default function Home() {
 
           {/* Hint bar */}
           <div className="px-3 py-1 bg-bsb-dark/80 border-t border-white/5 text-[10px] text-bsb-dim flex items-center gap-4">
-            <span><kbd className="px-1 bg-white/10 rounded">Click</kbd> = draft to {TEAM_NAMES[0]}</span>
+            <span><kbd className="px-1 bg-white/10 rounded">Click name</kbd> = player card</span>
+            <span><kbd className="px-1 bg-white/10 rounded">Click row</kbd> = draft to {TEAM_NAMES[0]}</span>
             <span><kbd className="px-1 bg-white/10 rounded">Right-click</kbd> = assign to team</span>
             <span><kbd className="px-1 bg-white/10 rounded">/</kbd> = search</span>
             <span className="hidden lg:inline ml-auto">

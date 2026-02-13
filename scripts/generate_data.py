@@ -2,7 +2,8 @@
 """
 BSB Draft App - Data Pipeline
 Pulls projections from FanGraphs Steamer, applies custom BSB scoring,
-calculates post-Mini scarcity, and outputs JSON for the webapp.
+calculates post-Mini scarcity, fetches player bios & historical stats
+from MLB Stats API, and outputs JSON for the webapp.
 
 Run: python scripts/generate_data.py
 Output: src/data/*.json
@@ -12,12 +13,16 @@ import json
 import urllib.request
 import os
 import math
+import time
 from collections import Counter
 
 OUTPUT_DIR = os.path.join(os.path.dirname(__file__), '..', 'src', 'data')
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 HEADERS = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
+
+# Historical seasons to pull for player cards
+HISTORY_SEASONS = ['2022', '2023', '2024']
 
 # =============================================================================
 # BSB CUSTOM SCORING
@@ -74,6 +79,145 @@ def normalize_pos(pos):
 
 
 # =============================================================================
+# MLB STATS API — Bio + Historical Stats for Player Cards
+# =============================================================================
+def calc_historical_batter_fpts(s):
+    """Calculate BSB FPTS from MLB Stats API hitting stats dict."""
+    h = s.get('hits', 0) or 0
+    d = s.get('doubles', 0) or 0
+    t = s.get('triples', 0) or 0
+    hr = s.get('homeRuns', 0) or 0
+    singles = h - d - t - hr
+    tb = singles + 2 * d + 3 * t + 4 * hr
+    r = s.get('runs', 0) or 0
+    rbi = s.get('rbi', 0) or 0
+    bb = s.get('baseOnBalls', 0) or 0
+    sb = s.get('stolenBases', 0) or 0
+    return round(r + tb + bb + rbi + sb, 1)
+
+
+def calc_historical_pitcher_fpts(s):
+    """Calculate BSB FPTS from MLB Stats API pitching stats dict."""
+    ip_str = s.get('inningsPitched', '0')
+    ip = float(ip_str) if ip_str else 0
+    er = s.get('earnedRuns', 0) or 0
+    so = s.get('strikeOuts', 0) or 0
+    bb = s.get('baseOnBalls', 0) or 0
+    w = s.get('wins', 0) or 0
+    sv = s.get('saves', 0) or 0
+    h = s.get('hits', 0) or 0
+    hld = s.get('holds', 0) or 0
+    gs = s.get('gamesStarted', 0) or 0
+    g = s.get('gamesPlayed', 0) or 0
+    # Estimate QS: ~70% of GS for top starters, ~50% average
+    qs = round(gs * 0.55) if gs > 0 else 0
+    cg = s.get('completeGames', 0) or 0
+    relief_apps = g - gs
+    irs = round(relief_apps * 0.45 * 0.70, 1)
+    return round(
+        (er * -2) + (ip * 3) + (so * 1) + (bb * -1) + (w * 10) +
+        (sv * 8) + (irs * 2) + (qs * 4) + (cg * 5) + (h * -1) + (hld * 6),
+        1
+    )
+
+
+def fetch_mlb_bios_and_history(batters, pitchers):
+    """
+    Fetch bio info (age, bats, throws, height, weight, debut) and
+    historical stats (last 3 years of BSB FPTS) from MLB Stats API.
+    Enriches player dicts in-place.
+    """
+    # Build xMLBAMID mapping from FanGraphs data
+    # We stored mlbam_id during processing
+    all_players = batters + pitchers
+    mlb_ids = [p['mlbam_id'] for p in all_players if p.get('mlbam_id')]
+
+    if not mlb_ids:
+        print("  ⚠ No MLBAM IDs found, skipping bio/history fetch")
+        return
+
+    print(f"  Fetching bios & history for {len(mlb_ids)} players from MLB Stats API...")
+
+    # Batch fetch in groups of 100
+    bio_map = {}  # mlbam_id -> { age, bats, throws, ... }
+    batch_size = 100
+
+    for i in range(0, len(mlb_ids), batch_size):
+        batch = mlb_ids[i:i + batch_size]
+        ids_str = ",".join(str(x) for x in batch)
+        url = (
+            f"https://statsapi.mlb.com/api/v1/people?personIds={ids_str}"
+            f"&hydrate=stats(group=[hitting,pitching],type=[yearByYear])"
+        )
+        try:
+            data = fetch_json(url)
+            for person in data.get('people', []):
+                pid = person.get('id')
+                bio = {
+                    'age': person.get('currentAge'),
+                    'bats': person.get('batSide', {}).get('code'),
+                    'throws': person.get('pitchHand', {}).get('code'),
+                    'height': person.get('height'),
+                    'weight': person.get('weight'),
+                    'birthDate': person.get('birthDate'),
+                    'mlbDebut': person.get('mlbDebutDate'),
+                    'birthCountry': person.get('birthCountry'),
+                }
+                # Extract historical stats
+                hit_history = {}
+                pitch_history = {}
+                for stat_group in person.get('stats', []):
+                    group = stat_group.get('group', {}).get('displayName', '')
+                    for split in stat_group.get('splits', []):
+                        season = split.get('season', '')
+                        # Only MLB stats (sport.id == 1), skip minor leagues
+                        sport = split.get('sport', {})
+                        if sport and sport.get('id') != 1:
+                            continue
+                        if season in HISTORY_SEASONS:
+                            s = split.get('stat', {})
+                            group_lower = group.lower()
+                            if group_lower == 'hitting':
+                                hit_history[season] = calc_historical_batter_fpts(s)
+                            elif group_lower == 'pitching':
+                                pitch_history[season] = calc_historical_pitcher_fpts(s)
+                bio['hitHistory'] = hit_history
+                bio['pitchHistory'] = pitch_history
+                bio_map[pid] = bio
+        except Exception as e:
+            print(f"    ⚠ Error fetching batch {i}-{i+batch_size}: {e}")
+
+        # Be polite to the API
+        if i + batch_size < len(mlb_ids):
+            time.sleep(0.3)
+
+    # Enrich players
+    enriched = 0
+    for p in all_players:
+        mlbam = p.get('mlbam_id')
+        if mlbam and mlbam in bio_map:
+            bio = bio_map[mlbam]
+            p['age'] = bio.get('age')
+            p['bats'] = bio.get('bats')
+            p['throws'] = bio.get('throws')
+            p['height'] = bio.get('height')
+            p['weight'] = bio.get('weight')
+            p['mlbDebut'] = bio.get('mlbDebut')
+            p['birthCountry'] = bio.get('birthCountry')
+            # Historical FPTS — use hitting for batters, pitching for pitchers
+            is_pitcher = p.get('pos') == 'P'
+            history = bio.get('pitchHistory', {}) if is_pitcher else bio.get('hitHistory', {})
+            p['histFpts'] = {yr: history.get(yr) for yr in HISTORY_SEASONS if yr in history}
+            enriched += 1
+
+    # Clean up temp field
+    for p in all_players:
+        p.pop('mlbam_id', None)
+
+    print(f"  ✅ Enriched {enriched}/{len(all_players)} players with bio & history")
+
+
+# =============================================================================
 # FETCH PROJECTIONS
 # =============================================================================
 def fetch_projections():
@@ -110,6 +254,7 @@ def process_batters(batters_raw):
 
         results.append({
             'id': str(b.get('playerid', '')),
+            'mlbam_id': b.get('xMLBAMID'),  # MLB Stats API ID — used for bio fetch, removed later
             'name': b['PlayerName'],
             'team': b.get('Team', ''),
             'pos': primary_pos,
@@ -171,6 +316,7 @@ def process_pitchers(pitchers_raw, batter_ids=None):
 
         results.append({
             'id': pid,
+            'mlbam_id': p.get('xMLBAMID'),  # MLB Stats API ID — used for bio fetch, removed later
             'name': p['PlayerName'],
             'team': p.get('Team', ''),
             'role': role,
@@ -396,6 +542,10 @@ def main():
 
     # Enrich with posRank, VORP, tier (before truncating to 300)
     enrich_players(batters, pitchers)
+
+    # Fetch bio data & historical stats from MLB Stats API
+    print("\nFetching player bios & historical stats...")
+    fetch_mlb_bios_and_history(batters[:300], pitchers[:300])
 
     analysis = analyze_scarcity(batters, pitchers)
 

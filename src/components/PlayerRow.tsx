@@ -4,12 +4,13 @@ import { PosBadge } from './PosBadge'
 import { GRID_COLS, tierRowBg, teamAbbrev } from './constants'
 
 export function PlayerRow({
-  player, rank, onDraft, onUndraft, onRightClick, showRole, isRecommended, recRank, pana
+  player, rank, onDraft, onUndraft, onRightClick, onNameClick, showRole, isRecommended, recRank, pana
 }: {
   player: Player; rank: number
   onDraft: (id: string) => void
   onUndraft: (id: string) => void
   onRightClick: (e: React.MouseEvent, player: Player) => void
+  onNameClick: (player: Player) => void
   showRole?: boolean
   isRecommended?: boolean
   recRank?: number
@@ -56,9 +57,13 @@ export function PlayerRow({
           <PosBadge pos={player.pos} posRank={player.posRank} small />
         )}
       </span>
-      {/* Name + rec badge */}
+      {/* Name + rec badge — clicking the name opens the player card */}
       <span className={`text-sm truncate min-w-0 pr-1 flex items-center gap-1 ${player.drafted ? 'text-bsb-dim' : 'text-white'}`} style={{ fontFamily: 'inherit' }}>
-        <span className="truncate">{player.name}</span>
+        <span
+          className="truncate hover:text-bsb-gold hover:underline cursor-pointer transition-colors"
+          onClick={(e) => { e.stopPropagation(); onNameClick(player) }}
+          title="View player card"
+        >{player.name}</span>
         {isRecommended && !player.drafted && (
           <span className="text-[8px] px-1 rounded bg-bsb-gold/20 text-bsb-gold font-bold shrink-0">REC</span>
         )}
