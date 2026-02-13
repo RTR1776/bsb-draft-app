@@ -2,6 +2,7 @@
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react'
 import { useDraftStore, Player } from '@/hooks/useDraftStore'
 import Fuse from 'fuse.js'
+import Link from 'next/link'
 
 // Components
 import { TEAM_NAMES, GRID_COLS, teamAbbrev, teamColor } from '@/components/constants'
@@ -231,6 +232,9 @@ export default function Home() {
             onClick={() => { if (confirm('Reset entire draft? This cannot be undone.')) store.resetDraft() }}
             className="px-2 py-1 text-xs text-red-400 hover:bg-red-400/10 rounded"
           >Reset</button>
+          <Link href="/guide" className="px-3 py-1 text-xs text-bsb-dim hover:text-bsb-gold hover:bg-white/5 rounded transition-all" title="League Guide">
+            📖 Guide
+          </Link>
         </div>
       </header>
 
