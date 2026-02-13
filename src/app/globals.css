@@ -1,0 +1,77 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bsb-navy: #1a1a2e;
+  --bsb-dark: #16213e;
+  --bsb-mid: #0f3460;
+  --bsb-accent: #e94560;
+  --bsb-gold: #ffd700;
+}
+
+body {
+  background: var(--bsb-navy);
+  color: #e2e8f0;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: rgba(255,255,255,0.05); }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.3); }
+
+/* Draft board row hover */
+.player-row {
+  transition: all 0.15s ease;
+  cursor: pointer;
+}
+.player-row:hover {
+  background: rgba(233, 69, 96, 0.1) !important;
+}
+.player-row.drafted {
+  opacity: 0.35;
+  text-decoration: line-through;
+}
+
+/* Glow effect for active draft category */
+.active-category {
+  box-shadow: 0 0 20px rgba(233, 69, 96, 0.3), 0 0 40px rgba(233, 69, 96, 0.1);
+  border-color: var(--bsb-accent) !important;
+}
+
+/* Position badge colors */
+.pos-C { background: #7c3aed; }
+.pos-1B { background: #dc2626; }
+.pos-2B { background: #2563eb; }
+.pos-3B { background: #ca8a04; }
+.pos-SS { background: #16a34a; }
+.pos-OF { background: #0f766e; }
+.pos-DH { background: #64748b; }
+.pos-SP { background: #dc2626; }
+.pos-RP { background: #9333ea; }
+.pos-P  { background: #dc2626; }
+
+/* Template tier colors */
+.tier-gold { background: linear-gradient(135deg, #ffd700 0%, #ffed4a 100%); color: #1a1a2e; }
+.tier-silver { background: linear-gradient(135deg, #94a3b8 0%, #cbd5e1 100%); color: #1a1a2e; }
+.tier-bronze { background: linear-gradient(135deg, #b45309 0%, #d97706 100%); color: #1a1a2e; }
+
+/* Search highlight */
+.search-highlight {
+  background: rgba(255, 215, 0, 0.3);
+  border-radius: 2px;
+  padding: 0 2px;
+}
+
+/* Scarcity bar */
+.scarcity-bar {
+  transition: width 0.5s ease;
+}
+
+@layer utilities {
+  .text-shadow-glow {
+    text-shadow: 0 0 10px rgba(233, 69, 96, 0.5);
+  }
+}
