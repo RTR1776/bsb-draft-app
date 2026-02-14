@@ -5,12 +5,12 @@ export const revalidate = 0
 
 export async function GET() {
   try {
-    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
     const today = new Date().toISOString().split('T')[0]
 
     const [transactionsRes, rssRes] = await Promise.allSettled([
       fetch(
-        `https://statsapi.mlb.com/api/v1/transactions?startDate=${thirtyDaysAgo}&endDate=${today}`,
+        `https://statsapi.mlb.com/api/v1/transactions?startDate=${sevenDaysAgo}&endDate=${today}`,
         { next: { revalidate: 300 } }
       ),
       fetch('https://www.rotowire.com/rss/news.xml', { next: { revalidate: 300 } }),

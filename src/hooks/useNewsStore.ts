@@ -28,6 +28,7 @@ export type NewsItem = {
 const CACHE_KEY = 'bsb-news-cache'
 const CACHE_TTL = 5 * 60 * 1000 // 5 minutes
 const REFRESH_INTERVAL = 5 * 60 * 1000 // 5 minutes
+const MAX_NEWS_AGE = 14 * 24 * 60 * 60 * 1000 // 14 days — discard older items
 
 // ─────────────────────────────────────────
 // Helpers
@@ -211,8 +212,10 @@ export function useNewsStore(allPlayers: Player[]) {
       const mlbItems = parseMLBTransactions(data.transactions)
       const rssItems = parseRotoWireRSS(data.rss)
 
-      // Combine and sort by timestamp (newest first)
+      // Combine, filter stale items, and sort by timestamp (newest first)
+      const cutoff = Date.now() - MAX_NEWS_AGE
       let combined = [...mlbItems, ...rssItems]
+        .filter((item) => item.timestamp > cutoff)
         .sort((a, b) => b.timestamp - a.timestamp)
 
       // Deduplicate by similar headlines for the same player
