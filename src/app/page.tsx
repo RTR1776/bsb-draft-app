@@ -14,17 +14,21 @@ import { DashboardStrip } from '@/components/DashboardStrip'
 import { TeamContextMenu } from '@/components/TeamContextMenu'
 import { ScarcityBar } from '@/components/ScarcityBar'
 import { MyTeamPositionGrid, AllTeamsPanel } from '@/components/TeamPanels'
+import { useNewsStore } from '@/hooks/useNewsStore'
+import { NewsFeed } from '@/components/NewsFeed'
 
 // ─────────────────────────────────────────
 // MAIN APP
 // ─────────────────────────────────────────
 export default function Home() {
   const store = useDraftStore()
+  const newsStore = useNewsStore(store.allPlayers)
   const [searchQuery, setSearchQuery] = useState('')
   const [posFilter, setPosFilter] = useState<string | null>(null)
   const [showAllPlayers, setShowAllPlayers] = useState(false)
   const [showDrafted, setShowDrafted] = useState(true)
-  const [rightPanel, setRightPanel] = useState<'myteam' | 'allteams'>('myteam')
+  const [rightPanel, setRightPanel] = useState<'myteam' | 'allteams' | 'news'>('myteam')
+  const [showHints, setShowHints] = useState(true)
   const searchRef = useRef<HTMLInputElement>(null)
 
   // Context menu state
@@ -163,6 +167,7 @@ export default function Home() {
           onClose={() => setCardPlayer(null)}
           onDraft={(id) => store.draftPlayer(id, 0)}
           allPlayers={store.allPlayers}
+          playerNews={newsStore.newsForPlayer(cardPlayer.id)}
         />
       )}
 
@@ -411,6 +416,9 @@ export default function Home() {
                 isRecommended={recIds.has(player.id)}
                 recRank={recommendations.findIndex(r => r.id === player.id) + 1}
                 pana={panaMap[player.id] || 0}
+                prevTier={i > 0 ? displayPlayers[i - 1].tier : undefined}
+                hasNews={newsStore.hasNewsForPlayer(player.id)}
+                newsSeverity={newsStore.topSeverityForPlayer(player.id)}
               />
             ))}
             {displayPlayers.length === 0 && (
@@ -420,20 +428,27 @@ export default function Home() {
             )}
           </div>
 
-          {/* Hint bar */}
-          <div className="px-3 py-1 bg-bsb-dark/80 border-t border-white/5 text-[10px] text-bsb-dim flex items-center gap-4">
-            <span><kbd className="px-1 bg-white/10 rounded">Click name</kbd> = player card</span>
-            <span><kbd className="px-1 bg-white/10 rounded">Click row</kbd> = draft to {TEAM_NAMES[0]}</span>
-            <span><kbd className="px-1 bg-white/10 rounded">Right-click</kbd> = assign to team</span>
-            <span><kbd className="px-1 bg-white/10 rounded">/</kbd> = search</span>
-            <span className="hidden lg:inline ml-auto">
-              <span className="text-bsb-gold/50">REC</span> = recommended
-              <span className="mx-1">·</span>
-              <span className="text-green-400/50">VORP</span> = value over replacement
-              <span className="mx-1">·</span>
-              <span className="text-red-400/50">▼</span> = big drop-off
-            </span>
-          </div>
+          {/* Hint bar — collapsible */}
+          {showHints ? (
+            <div className="px-3 py-1 bg-bsb-dark/80 border-t border-white/5 text-[10px] text-bsb-dim flex items-center gap-4">
+              <span><kbd className="px-1 bg-white/10 rounded">Click name</kbd> = player card</span>
+              <span><kbd className="px-1 bg-white/10 rounded">Click row</kbd> = draft to {TEAM_NAMES[0]}</span>
+              <span><kbd className="px-1 bg-white/10 rounded">Right-click</kbd> = assign to team</span>
+              <span><kbd className="px-1 bg-white/10 rounded">/</kbd> = search</span>
+              <span className="hidden lg:inline ml-auto">
+                <span className="text-bsb-gold/50">REC</span> = recommended
+                <span className="mx-1">·</span>
+                <span className="text-green-400/50">VORP</span> = value over replacement
+                <span className="mx-1">·</span>
+                <span className="text-red-400/50">▼</span> = big drop-off
+              </span>
+              <button onClick={() => setShowHints(false)} className="ml-2 text-white/20 hover:text-white/50 transition-colors">✕</button>
+            </div>
+          ) : (
+            <button onClick={() => setShowHints(true)} className="px-3 py-0.5 bg-bsb-dark/80 border-t border-white/5 text-[10px] text-bsb-dim hover:text-white/50 transition-colors w-full text-left">
+              ? Show hints
+            </button>
+          )}
         </main>
 
         {/* ── RIGHT SIDEBAR ── */}
@@ -456,6 +471,14 @@ export default function Home() {
                   : 'text-bsb-dim hover:text-white'
               }`}
             >All Teams</button>
+            <button
+              onClick={() => setRightPanel('news')}
+              className={`flex-1 px-3 py-2 text-xs font-bold uppercase tracking-wider transition-all ${
+                rightPanel === 'news'
+                  ? 'text-blue-400 border-b-2 border-blue-400'
+                  : 'text-bsb-dim hover:text-white'
+              }`}
+            >News {newsStore.news.length > 0 && <span className="text-white/30 ml-0.5">({newsStore.news.length})</span>}</button>
           </div>
 
           <div className="p-3">
@@ -509,6 +532,18 @@ export default function Home() {
             {/* ALL TEAMS TAB */}
             {rightPanel === 'allteams' && (
               <AllTeamsPanel allPlayers={store.allPlayers} onUndraft={store.undraftPlayer} />
+            )}
+
+            {/* NEWS TAB */}
+            {rightPanel === 'news' && (
+              <NewsFeed
+                news={newsStore.news}
+                allPlayers={store.allPlayers}
+                isLoading={newsStore.isLoading}
+                error={newsStore.error}
+                onRefresh={newsStore.refresh}
+                onPlayerClick={(player) => setCardPlayer(player)}
+              />
             )}
           </div>
         </aside>

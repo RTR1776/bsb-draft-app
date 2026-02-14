@@ -1,5 +1,6 @@
 'use client'
 import { Player } from '@/hooks/useDraftStore'
+import { NewsItem } from '@/hooks/useNewsStore'
 import { PosBadge } from './PosBadge'
 import { useEffect, useRef } from 'react'
 
@@ -54,7 +55,7 @@ function FptsHistoryChart({ histFpts, currentFpts }: { histFpts?: Record<string,
   const maxVal = Math.max(...allVals, 1)
 
   return (
-    <div className="flex items-end gap-1.5 h-20">
+    <div className="flex items-end gap-1.5 h-28">
       {seasons.map(yr => {
         const val = histFpts?.[yr]
         const height = val ? Math.max((val / maxVal) * 100, 8) : 0
@@ -100,8 +101,9 @@ function StatLine({ label, value, multiplier, suffix }: {
   const raw = value || 0
   const pts = Math.round(raw * multiplier * 10) / 10
   const isNeg = multiplier < 0
+  const isHighImpact = Math.abs(pts) >= 50
   return (
-    <div className="flex items-center justify-between py-[2px]">
+    <div className={`flex items-center justify-between py-[2px] ${isHighImpact ? 'bg-white/5 rounded px-1 -mx-1' : ''}`}>
       <span className="text-[11px] text-bsb-dim w-12">{label}</span>
       <span className="text-[11px] text-white/70 font-mono w-10 text-right">{typeof value === 'number' ? (suffix ? value.toFixed(1) : Math.round(value)) : '—'}</span>
       <span className="text-[9px] text-white/30 w-6 text-center">×{Math.abs(multiplier)}</span>
@@ -123,12 +125,14 @@ export function PlayerCard({
   onClose,
   onDraft,
   allPlayers,
+  playerNews,
 }: {
   player: Player
   pana: number
   onClose: () => void
   onDraft: (id: string) => void
   allPlayers: Player[]
+  playerNews?: NewsItem[]
 }) {
   const isPitcher = player.pos === 'P'
   const tier = tierLabel(player.tier)
@@ -179,7 +183,7 @@ export function PlayerCard({
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
       onClick={handleOverlayClick}
     >
-      <div className="bg-bsb-dark border border-white/15 rounded-xl shadow-2xl shadow-black/50 w-[440px] max-h-[90vh] overflow-y-auto">
+      <div className="bg-bsb-dark border border-white/15 rounded-xl shadow-2xl shadow-black/50 w-[520px] max-h-[90vh] overflow-y-auto">
         {/* ── HEADER ── */}
         <div className={`relative px-5 pt-5 pb-4 rounded-t-xl ${
           player.tier === 1 ? 'bg-gradient-to-br from-yellow-900/30 to-transparent' :
@@ -432,6 +436,41 @@ export function PlayerCard({
           </div>
         </div>
 
+        {/* ── PLAYER NEWS ── */}
+        {playerNews && playerNews.length > 0 && (
+          <div className="px-5 py-3 border-t border-white/10">
+            <div className="text-[10px] text-bsb-dim uppercase tracking-wider mb-2">
+              Recent News <span className="text-white/25">({playerNews.length})</span>
+            </div>
+            <div className="space-y-1.5 max-h-40 overflow-y-auto">
+              {playerNews.slice(0, 5).map((item) => (
+                <div key={item.id} className="flex items-start gap-2 text-[11px]">
+                  <span className={`w-1.5 h-1.5 rounded-full shrink-0 mt-1 ${
+                    item.severity === 'high' ? 'bg-red-400' :
+                    item.severity === 'medium' ? 'bg-orange-400' : 'bg-blue-400'
+                  }`} />
+                  <div className="min-w-0 flex-1">
+                    <div className="text-white/80 leading-snug">{item.headline}</div>
+                    <div className="flex items-center gap-2 mt-0.5 text-[9px] text-white/25">
+                      <span>{(() => {
+                        const mins = Math.round((Date.now() - item.timestamp) / 60000)
+                        if (mins < 60) return `${mins}m ago`
+                        const hrs = Math.round(mins / 60)
+                        if (hrs < 24) return `${hrs}h ago`
+                        return `${Math.round(hrs / 24)}d ago`
+                      })()}</span>
+                      <span className="capitalize px-1 rounded bg-white/5">
+                        {item.category.replace('-', ' ')}
+                      </span>
+                      <span>{item.source === 'mlb-transactions' ? 'MLB' : 'RotoWire'}</span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* ── ACTION BAR ── */}
         <div className="px-5 py-3 border-t border-white/10 flex items-center justify-between">
           <button
@@ -441,7 +480,7 @@ export function PlayerCard({
           {!player.drafted && (
             <button
               onClick={() => { onDraft(player.id); onClose() }}
-              className="px-4 py-1.5 text-xs font-bold bg-bsb-gold/20 text-bsb-gold border border-bsb-gold/30 hover:bg-bsb-gold/30 rounded transition-all"
+              className="px-5 py-2 text-sm font-bold bg-bsb-gold/20 text-bsb-gold border border-bsb-gold/30 hover:bg-bsb-gold/30 hover:scale-[1.02] active:scale-[0.98] rounded transition-all"
             >
               Draft to My Team
             </button>

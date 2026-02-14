@@ -22,7 +22,7 @@ export function CategorySelector({
       <button
         key={cat.key}
         onClick={() => onSelect(active === cat.key ? null : cat.key)}
-        className={`px-2 py-1 rounded text-xs font-bold transition-all relative ${
+        className={`px-3 py-1.5 min-w-[44px] rounded text-xs font-bold transition-all relative ${
           isActive
             ? 'active-category bg-bsb-accent text-white'
             : isComplete

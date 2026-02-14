@@ -43,7 +43,7 @@ export function MyTeamPositionGrid({ myPlayers, onUndraft }: { myPlayers: Player
                 onClick={() => onUndraft(p.id)}
                 title={`${p.name} (${p.fpts} FPTS) — click to undraft`}
               >
-                <span className="text-white/80 truncate max-w-[80px]">{p.name.split(' ').pop()}</span>
+                <span className="text-white/80 truncate max-w-[95px]">{p.name.split(' ')[0][0] + '. ' + p.name.split(' ').slice(1).join(' ')}</span>
                 <span className="text-bsb-gold font-bold">{p.fpts}</span>
               </div>
             ))}

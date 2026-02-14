@@ -4,7 +4,7 @@ import { PosBadge } from './PosBadge'
 import { GRID_COLS, tierRowBg, teamAbbrev } from './constants'
 
 export function PlayerRow({
-  player, rank, onDraft, onUndraft, onRightClick, onNameClick, showRole, isRecommended, recRank, pana
+  player, rank, onDraft, onUndraft, onRightClick, onNameClick, showRole, isRecommended, recRank, pana, prevTier, hasNews, newsSeverity
 }: {
   player: Player; rank: number
   onDraft: (id: string) => void
@@ -15,6 +15,9 @@ export function PlayerRow({
   isRecommended?: boolean
   recRank?: number
   pana: number
+  prevTier?: number
+  hasNews?: boolean
+  newsSeverity?: 'high' | 'medium' | 'low'
 }) {
   const isPitcher = player.pos === 'P'
 
@@ -33,11 +36,14 @@ export function PlayerRow({
     ? recRank === 1 ? 'border-l-2 border-l-bsb-gold' : 'border-l-2 border-l-white/30'
     : ''
 
+  // Tier divider — show border when tier changes
+  const showTierDivider = prevTier !== undefined && player.tier !== prevTier && !player.drafted
+
   return (
     <div
       className={`player-row grid items-center px-2 py-1 text-xs font-mono ${
         player.drafted ? 'drafted' : ''
-      } ${tierBg} ${recBorder} ${rank % 2 === 0 && !tierBg ? 'bg-white/[0.02]' : ''}`}
+      } ${tierBg} ${recBorder} ${rank % 2 === 0 && !tierBg ? 'bg-white/[0.02]' : ''} ${showTierDivider ? 'border-t border-white/10' : ''}`}
       style={{ gridTemplateColumns: GRID_COLS }}
       onClick={() => player.drafted ? onUndraft(player.id) : onDraft(player.id)}
       onContextMenu={(e) => {
@@ -59,6 +65,12 @@ export function PlayerRow({
       </span>
       {/* Name + rec badge — clicking the name opens the player card */}
       <span className={`text-sm truncate min-w-0 pr-1 flex items-center gap-1 ${player.drafted ? 'text-bsb-dim' : 'text-white'}`} style={{ fontFamily: 'inherit' }}>
+        {hasNews && !player.drafted && (
+          <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${
+            newsSeverity === 'high' ? 'bg-red-400 animate-pulse' :
+            newsSeverity === 'medium' ? 'bg-orange-400' : 'bg-blue-400'
+          }`} title="Has recent news" />
+        )}
         <span
           className="truncate hover:text-bsb-gold hover:underline cursor-pointer transition-colors"
           onClick={(e) => { e.stopPropagation(); onNameClick(player) }}
@@ -68,7 +80,7 @@ export function PlayerRow({
           <span className="text-[8px] px-1 rounded bg-bsb-gold/20 text-bsb-gold font-bold shrink-0">REC</span>
         )}
         {pana >= 20 && !player.drafted && !isRecommended && (
-          <span className="text-[8px] px-0.5 text-red-400 font-bold shrink-0" title={`${pana}pt drop-off to next`}>▼</span>
+          <span className="text-[8px] px-1 text-red-400 font-bold shrink-0" title={`${pana}pt drop-off to next`}>▼</span>
         )}
       </span>
       {/* Team */}

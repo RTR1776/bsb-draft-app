@@ -26,7 +26,7 @@ export function TemplatePanel({
             i < 4 ? 'bg-bsb-gold text-bsb-navy' : 'bg-white/10 text-bsb-dim'
           }`}>{i + 1}</span>
           <span className="font-bold w-6">{t}</span>
-          <span className={`text-xs font-mono ${scores[t] > 0 ? 'text-green-400' : 'text-red-400'}`}>
+          <span className={`text-sm font-mono font-bold px-1.5 rounded ${scores[t] > 0 ? 'text-green-400 bg-green-400/10' : 'text-red-400 bg-red-400/10'}`}>
             {scores[t] > 0 ? '+' : ''}{Math.round(scores[t])}
           </span>
           {selected === t && (
