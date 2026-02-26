@@ -39,7 +39,7 @@ So a guy who hits a home run gets +4 for the total bases, +1 for the run scored,
 | Hold (HLD) | +6 |
 | Quality Start (QS) | +4 |
 | Complete Game (CG) | +5 |
-| Inherited Runner Scored (IRS) | +2 |
+| Inherited Runners Stranded (IRSTR) | +2 |
 | **Earned Run (ER)** | **-2** |
 | **Walk Allowed (BB)** | **-1** |
 | **Hit Allowed (H)** | **-1** |

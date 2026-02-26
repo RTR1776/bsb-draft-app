@@ -240,6 +240,9 @@ export default function Home() {
           <Link href="/guide" className="px-3 py-1 text-xs text-bsb-dim hover:text-bsb-gold hover:bg-white/5 rounded transition-all" title="League Guide">
             📖 Guide
           </Link>
+          <Link href="/insights" className="px-3 py-1 text-xs text-bsb-dim hover:text-bsb-gold hover:bg-white/5 rounded transition-all" title="Weekly Variance Insights">
+            📊 Insights
+          </Link>
         </div>
       </header>
 

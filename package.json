@@ -9,7 +9,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "generate-data": "python3 scripts/generate_data.py"
+    "generate-data": "python3 scripts/generate_data.py",
+    "generate-variance": "python3 scripts/generate_weekly_variance.py",
+    "generate-projections": "python3 scripts/generate_projections.py"
   },
   "dependencies": {
     "next": "^14.2.0",

@@ -159,6 +159,9 @@ export default function GuidePage() {
               </a>
             ))}
           </div>
+          <Link href="/insights" className="px-3 py-1.5 text-xs text-bsb-dim hover:text-blue-400 hover:bg-white/5 rounded-full transition-all">
+            📊 Insights
+          </Link>
           <Link href="/" className="px-4 py-1.5 bg-bsb-accent/20 border border-bsb-accent/40 rounded-full text-xs font-bold text-bsb-accent hover:bg-bsb-accent/30 transition-all">
             Open Draft Board →
           </Link>
@@ -245,7 +248,7 @@ export default function GuidePage() {
                   <ScoreRow action="Hold (HLD)" pts="+6" />
                   <ScoreRow action="Quality Start (QS)" pts="+4" />
                   <ScoreRow action="Complete Game (CG)" pts="+5" />
-                  <ScoreRow action="Inherited Runner Scored" pts="+2" />
+                  <ScoreRow action="Inherited Runners Stranded (IRSTR)" pts="+2" />
                   <ScoreRow action="Earned Run (ER)" pts="-2" accent />
                   <ScoreRow action="Walk Allowed (BB)" pts="-1" accent />
                   <ScoreRow action="Hit Allowed (H)" pts="-1" accent />

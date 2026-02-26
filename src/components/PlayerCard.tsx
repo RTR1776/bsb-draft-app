@@ -261,6 +261,40 @@ export function PlayerCard({
               </span>
             )}
           </div>
+
+          {/* Profile badges: injury, consistency, age curve */}
+          <div className="flex items-center gap-1.5 mt-2 flex-wrap">
+            {player.injuryFlag && player.injuryFlag !== 'HEALTHY' && (
+              <span className={`text-[9px] px-1.5 py-0.5 rounded border font-bold ${
+                player.injuryFlag === 'SEVERE' ? 'bg-red-500/20 text-red-400 border-red-500/40' :
+                player.injuryFlag === 'MODERATE' ? 'bg-orange-500/20 text-orange-400 border-orange-500/40' :
+                'bg-yellow-500/20 text-yellow-400 border-yellow-500/40'
+              }`}>
+                {player.injuryFlag === 'SEVERE' ? '⚠ INJURY RISK' :
+                 player.injuryFlag === 'MODERATE' ? '⚠ INJURY PRONE' : 'MINOR INJ'}
+              </span>
+            )}
+            {player.consistencyGrade && (
+              <span className={`text-[9px] px-1.5 py-0.5 rounded border font-bold ${
+                player.consistencyGrade === 'A' ? 'bg-green-500/20 text-green-400 border-green-500/40' :
+                player.consistencyGrade === 'B' ? 'bg-blue-500/20 text-blue-300 border-blue-500/40' :
+                player.consistencyGrade === 'C' ? 'bg-white/10 text-white/50 border-white/20' :
+                'bg-red-500/10 text-red-400/70 border-red-500/30'
+              }`}>
+                CON: {player.consistencyGrade}
+              </span>
+            )}
+            {player.ageCurve && (
+              <span className={`text-[9px] px-1.5 py-0.5 rounded border font-bold ${
+                player.ageCurve === 'Peak' ? 'bg-green-500/10 text-green-400/70 border-green-500/20' :
+                player.ageCurve === 'Pre-Peak' ? 'bg-blue-500/10 text-blue-300/70 border-blue-500/20' :
+                player.ageCurve === 'Declining' ? 'bg-orange-500/10 text-orange-400/70 border-orange-500/20' :
+                'bg-red-500/10 text-red-400/70 border-red-500/20'
+              }`}>
+                {player.ageCurve}
+              </span>
+            )}
+          </div>
         </div>
 
         {/* ── BSB SCORE HERO ── */}
@@ -302,11 +336,108 @@ export function PlayerCard({
           </div>
         </div>
 
+        {/* ── BSB PROJECTION vs STEAMER ── */}
+        {player.bsbFpts != null && (
+          <div className="px-5 py-3 border-t border-white/10">
+            <div className="text-[10px] text-bsb-dim uppercase tracking-wider mb-2">BSB Custom Projection</div>
+            <div className="flex items-center gap-4">
+              <div className="text-center">
+                <div className="text-2xl font-black text-bsb-gold">{player.bsbFpts}</div>
+                <div className="text-[9px] text-bsb-dim">BSB Proj</div>
+              </div>
+              <div className="text-white/15 text-lg">vs</div>
+              <div className="text-center">
+                <div className="text-2xl font-black text-white/40">{player.fpts}</div>
+                <div className="text-[9px] text-bsb-dim">Steamer</div>
+              </div>
+              <div className={`text-sm font-bold ml-1 ${
+                (player.bsbDelta || 0) > 0 ? 'text-green-400' :
+                (player.bsbDelta || 0) < 0 ? 'text-red-400' : 'text-white/30'
+              }`}>
+                {(player.bsbDelta || 0) > 0 ? '+' : ''}{player.bsbDelta}
+              </div>
+              <div className="ml-auto text-right">
+                <div className="text-[9px] text-white/30">{player.projectionYears || 0}yr data</div>
+                {player.ageAdj != null && player.ageAdj !== 1.0 && (
+                  <div className="text-[9px] text-white/25">
+                    age adj: {player.ageAdj < 1 ? '' : '+'}{Math.round((player.ageAdj - 1) * 100)}%
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* ── 3-YEAR HISTORY ── */}
         <div className="px-5 py-3 border-t border-white/10">
           <div className="text-[10px] text-bsb-dim uppercase tracking-wider mb-2">BSB Fantasy Points History</div>
           <FptsHistoryChart histFpts={player.histFpts} currentFpts={player.fpts} />
         </div>
+
+        {/* ── DURABILITY & CONSISTENCY ── */}
+        {(player.gamesPlayed || player.weeklyCV != null) && (
+          <div className="px-5 py-3 border-t border-white/10">
+            <div className="text-[10px] text-bsb-dim uppercase tracking-wider mb-2">Durability & Consistency</div>
+            {player.gamesPlayed && (
+              <div className="grid grid-cols-3 gap-2 mb-3">
+                {['2022', '2023', '2024'].map(yr => {
+                  const gp = player.gamesPlayed?.[yr]
+                  const expected = isPitcher
+                    ? (player.role === 'SP' ? 31 : 65)
+                    : 155
+                  const pct = gp != null ? Math.min(gp / expected, 1.0) : 0
+                  return (
+                    <div key={yr} className="bg-white/5 rounded p-2">
+                      <div className="text-[9px] text-bsb-dim">{yr}</div>
+                      <div className="text-xs font-bold text-white/80">{gp != null ? `${gp} ${isPitcher ? (player.role === 'SP' ? 'GS' : 'G') : 'G'}` : '—'}</div>
+                      <div className="h-1.5 bg-white/10 rounded mt-1">
+                        <div
+                          className={`h-full rounded ${pct >= 0.9 ? 'bg-green-500/60' : pct >= 0.7 ? 'bg-yellow-500/60' : pct > 0 ? 'bg-red-500/60' : 'bg-white/5'}`}
+                          style={{ width: `${pct * 100}%` }}
+                        />
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+            <div className="flex items-center gap-4">
+              {player.weeklyCV != null && (
+                <div>
+                  <div className="text-[9px] text-bsb-dim">Weekly CV</div>
+                  <div className="text-sm font-bold text-white/70">{player.weeklyCV.toFixed(2)}</div>
+                </div>
+              )}
+              {player.weeklyMean != null && (
+                <div>
+                  <div className="text-[9px] text-bsb-dim">Avg/Week</div>
+                  <div className="text-sm font-bold text-bsb-gold">{player.weeklyMean.toFixed(1)}</div>
+                </div>
+              )}
+              {player.consistencyGrade && (
+                <div>
+                  <div className="text-[9px] text-bsb-dim">Consistency</div>
+                  <div className={`text-sm font-bold ${
+                    player.consistencyGrade === 'A' ? 'text-green-400' :
+                    player.consistencyGrade === 'B' ? 'text-blue-300' :
+                    player.consistencyGrade === 'C' ? 'text-white/50' :
+                    'text-red-400/70'
+                  }`}>{player.consistencyGrade}</div>
+                </div>
+              )}
+              {player.healthPct != null && (
+                <div>
+                  <div className="text-[9px] text-bsb-dim">Health</div>
+                  <div className={`text-sm font-bold ${
+                    player.healthPct >= 0.9 ? 'text-green-400' :
+                    player.healthPct >= 0.75 ? 'text-yellow-400' :
+                    'text-red-400'
+                  }`}>{Math.round(player.healthPct * 100)}%</div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* ── SCORING BREAKDOWN ── */}
         <div className="px-5 py-3 border-t border-white/10">

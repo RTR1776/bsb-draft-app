@@ -5,6 +5,7 @@ import pitchersData from '@/data/pitchers.json'
 import templatesData from '@/data/templates.json'
 import analysisData from '@/data/analysis.json'
 import draftCategoriesData from '@/data/draftCategories.json'
+import projectionsData from '@/data/projections.json'
 
 export type Player = {
   id: string
@@ -36,7 +37,20 @@ export type Player = {
   avg?: number; tb?: number; obp?: number; slg?: number; ops?: number; war?: number
   // pitcher stats
   ip?: number; w?: number; sv?: number; hld?: number; qs?: number; so?: number
-  era?: number; whip?: number; kper9?: number; h?: number; irs?: number; g?: number; gs?: number
+  era?: number; whip?: number; kper9?: number; h?: number; irstr?: number; g?: number; gs?: number
+  // BSB custom projection fields
+  bsbFpts?: number
+  bsbDelta?: number
+  projectionYears?: number
+  injuryFlag?: string        // 'HEALTHY' | 'MINOR' | 'MODERATE' | 'SEVERE'
+  healthPct?: number
+  gamesPlayed?: Record<string, number>
+  weeklyCV?: number
+  weeklyMean?: number
+  consistencyGrade?: string  // 'A' through 'F'
+  consistencyScore?: number
+  ageCurve?: string          // 'Pre-Peak' | 'Peak' | 'Declining' | 'Late Career'
+  ageAdj?: number
 }
 
 export type DraftCategory = {
@@ -69,10 +83,16 @@ const STORAGE_KEY = 'bsb-draft-state'
 
 export function useDraftStore() {
   const [batters, setBatters] = useState<Player[]>(() =>
-    (battersData as any[]).map(b => ({ ...b, drafted: false }))
+    (battersData as any[]).map(b => {
+      const proj = (projectionsData as any).players?.[b.id]
+      return { ...b, drafted: false, ...proj }
+    })
   )
   const [pitchers, setPitchers] = useState<Player[]>(() =>
-    (pitchersData as any[]).map(p => ({ ...p, drafted: false }))
+    (pitchersData as any[]).map(p => {
+      const proj = (projectionsData as any).players?.[p.id]
+      return { ...p, drafted: false, ...proj }
+    })
   )
   const [draftState, setDraftState] = useState<DraftState>({
     phase: 'pre-draft',

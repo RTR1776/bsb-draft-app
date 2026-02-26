@@ -28,7 +28,7 @@ HISTORY_SEASONS = ['2022', '2023', '2024']
 # BSB CUSTOM SCORING
 # =============================================================================
 # Batting: R(1) + TB(1) + BB(1) + RBI(1) + SB(1)
-# Pitching: IP*3 + K(1) + W(10) + SV(8) + HLD(6) + QS(4) + CG(5) + IRS(2)
+# Pitching: IP*3 + K(1) + W(10) + SV(8) + HLD(6) + QS(4) + CG(5) + IRSTR(2)
 #           - ER(2) - BB(1) - H(1)
 
 def calc_batter_fpts(b):
@@ -58,10 +58,10 @@ def calc_pitcher_fpts(p):
     g = p.get('G', 0) or 0
     cg = gs * 0.02
     relief_apps = g - gs
-    irs = relief_apps * 0.45 * 0.70  # estimated
+    irstr = relief_apps * 0.45 * 0.70  # estimated
     return round(
         (er * -2) + (ip * 3) + (so * 1) + (bb * -1) + (w * 10) +
-        (sv * 8) + (irs * 2) + (qs * 4) + (cg * 5) + (h * -1) + (hld * 6),
+        (sv * 8) + (irstr * 2) + (qs * 4) + (cg * 5) + (h * -1) + (hld * 6),
         1
     )
 
@@ -113,10 +113,10 @@ def calc_historical_pitcher_fpts(s):
     qs = round(gs * 0.55) if gs > 0 else 0
     cg = s.get('completeGames', 0) or 0
     relief_apps = g - gs
-    irs = round(relief_apps * 0.45 * 0.70, 1)
+    irstr = round(relief_apps * 0.45 * 0.70, 1)
     return round(
         (er * -2) + (ip * 3) + (so * 1) + (bb * -1) + (w * 10) +
-        (sv * 8) + (irs * 2) + (qs * 4) + (cg * 5) + (h * -1) + (hld * 6),
+        (sv * 8) + (irstr * 2) + (qs * 4) + (cg * 5) + (h * -1) + (hld * 6),
         1
     )
 
@@ -299,7 +299,7 @@ def process_pitchers(pitchers_raw, batter_ids=None):
         g = p.get('G', 0) or 0
         role = 'SP' if gs > g * 0.5 else 'RP'
         relief_apps = g - gs
-        irs = round(relief_apps * 0.45 * 0.70, 1)
+        irstr = round(relief_apps * 0.45 * 0.70, 1)
         bb = round(p.get('BB', 0) or 0)
         h = round(p.get('H', 0) or 0)
 
@@ -334,7 +334,7 @@ def process_pitchers(pitchers_raw, batter_ids=None):
             'kper9': kper9,
             'bb': bb,
             'h': h,
-            'irs': irs,
+            'irstr': irstr,
             'g': round(g),
             'gs': round(gs),
             'war': round(p.get('WAR', 0) or 0, 1),
@@ -382,8 +382,126 @@ DRAFT_CATEGORIES = [
 
 
 # =============================================================================
-# POST-MINI SCARCITY ANALYSIS
+# SNAKE DRAFT PICK VALUATION
 # =============================================================================
+def get_snake_picks(pick_position, num_rounds, num_teams=16):
+    """
+    Return 0-indexed overall pick indices for a given draft position
+    in a snake draft.
+    E.g. pick_position=1, num_rounds=4, num_teams=16
+    → Round 1: pick 0, Round 2 (reversed): pick 31, Round 3: pick 32, Round 4: pick 63
+    """
+    picks = []
+    for rnd in range(num_rounds):
+        if rnd % 2 == 0:  # odd rounds (1,3,5): normal order
+            overall = rnd * num_teams + (pick_position - 1)
+        else:             # even rounds (2,4,6): reversed
+            overall = rnd * num_teams + (num_teams - pick_position)
+        picks.append(overall)
+    return picks
+
+
+def snake_value(pool, pick_position, num_rounds, num_teams=16):
+    """Sum FPTS of players at snake pick positions from a sorted pool."""
+    indices = get_snake_picks(pick_position, num_rounds, num_teams)
+    total = 0
+    for idx in indices:
+        if idx < len(pool):
+            total += pool[idx]['fpts']
+    return round(total, 1)
+
+
+def build_category_pool(batters, pitchers, cat, post_mini_bat=None, post_mini_pit=None):
+    """Build the eligible player pool for a draft category, sorted by FPTS desc."""
+    ptype = cat['type']
+    pos_filter = cat['posFilter']
+    is_mega = cat['key'].startswith('Mega')
+
+    if ptype == 'pitcher':
+        pool = list(post_mini_pit if is_mega and post_mini_pit is not None else pitchers)
+    elif ptype == 'batter':
+        pool = list(post_mini_bat if is_mega and post_mini_bat is not None else batters)
+        if pos_filter:
+            pool = [b for b in pool if pos_filter in b['positions']]
+    else:  # 'any'
+        bat = post_mini_bat if is_mega and post_mini_bat is not None else batters
+        pit = post_mini_pit if is_mega and post_mini_pit is not None else pitchers
+        pool = list(bat) + list(pit)
+
+    pool.sort(key=lambda x: x['fpts'], reverse=True)
+    return pool
+
+
+# =============================================================================
+# POST-MINI SCARCITY & TEMPLATE ANALYSIS
+# =============================================================================
+
+def get_players_at_picks(pool, pick_position, num_rounds, num_teams=16):
+    """Return actual player dicts at each snake pick position from a sorted pool."""
+    indices = get_snake_picks(pick_position, num_rounds, num_teams)
+    players = []
+    for idx in indices:
+        if idx < len(pool):
+            players.append(pool[idx])
+    return players
+
+
+def assign_optimal_lineup(all_batters, all_pitchers):
+    """
+    Given all batters and pitchers on a roster, assign to the optimal
+    starting lineup to maximize total starting FPTS.
+
+    Active lineup: C(1), 1B(1), 2B(1), SS(1), 3B(1), OF(3), DH(1), U(1), P(9)
+    Bench contributes 0 to weekly scoring.
+
+    Uses a greedy-by-constraint approach: fill the most position-scarce
+    slots first, then flex slots (DH/U) with the best remaining batters.
+
+    Returns (hit_start_fpts, pit_start_fpts, lineup_detail).
+    """
+    sorted_bat = sorted(all_batters, key=lambda x: x['fpts'], reverse=True)
+    assigned = set()  # indices into sorted_bat
+    lineup = {}
+
+    # Fill single-position constrained slots (most scarce first)
+    # Order: C is scarcest, then 2B, 3B, SS, 1B
+    for pos in ['C', '2B', '3B', 'SS', '1B']:
+        for i, b in enumerate(sorted_bat):
+            if i not in assigned and pos in b.get('positions', []):
+                lineup[pos] = b
+                assigned.add(i)
+                break
+
+    # Fill OF (3 slots)
+    of_count = 0
+    for i, b in enumerate(sorted_bat):
+        if i not in assigned and 'OF' in b.get('positions', []):
+            lineup[f'OF{of_count+1}'] = b
+            assigned.add(i)
+            of_count += 1
+            if of_count >= 3:
+                break
+
+    # Fill DH and U (best 2 remaining, any position)
+    flex_count = 0
+    for i, b in enumerate(sorted_bat):
+        if i not in assigned:
+            slot = 'DH' if flex_count == 0 else 'U'
+            lineup[slot] = b
+            assigned.add(i)
+            flex_count += 1
+            if flex_count >= 2:
+                break
+
+    hit_start = sum(p['fpts'] for p in lineup.values())
+
+    # Pitchers: start best 9
+    sorted_pit = sorted(all_pitchers, key=lambda x: x['fpts'], reverse=True)
+    pit_start = sum(p['fpts'] for p in sorted_pit[:9])
+
+    return round(hit_start, 1), round(pit_start, 1), lineup
+
+
 def analyze_scarcity(batters, pitchers):
     MINI_SIZE = 64
 
@@ -393,58 +511,328 @@ def analyze_scarcity(batters, pitchers):
     remaining_bat = [b for b in batters if b['name'] not in mini_batters]
     remaining_pit = [p for p in pitchers if p['name'] not in mini_pitchers]
 
+    # Position scarcity (1st vs 16th gap) — kept for sidebar display
     scarcity = {}
-    pos_pools = {}
-
     for pos in ['C', '1B', '2B', '3B', 'SS', 'OF']:
-        pool = [b for b in remaining_bat if pos in b['positions']]
-        pool.sort(key=lambda x: x['fpts'], reverse=True)
-        pos_pools[pos] = pool[:40]
+        pool = sorted([b for b in remaining_bat if pos in b['positions']],
+                       key=lambda x: x['fpts'], reverse=True)
         if len(pool) >= 16:
             scarcity[pos] = round(pool[0]['fpts'] - pool[15]['fpts'])
 
-    sp_rem = [p for p in remaining_pit if p['role'] == 'SP']
-    rp_rem = [p for p in remaining_pit if p['role'] == 'RP']
+    sp_rem = sorted([p for p in remaining_pit if p['role'] == 'SP'],
+                     key=lambda x: x['fpts'], reverse=True)
+    rp_rem = sorted([p for p in remaining_pit if p['role'] == 'RP'],
+                     key=lambda x: x['fpts'], reverse=True)
     if len(sp_rem) >= 16:
         scarcity['SP'] = round(sp_rem[0]['fpts'] - sp_rem[15]['fpts'])
     if len(rp_rem) >= 16:
         scarcity['RP'] = round(rp_rem[0]['fpts'] - rp_rem[15]['fpts'])
 
-    # Template scoring
-    cat_scarcity = {
-        'Mini Bat': 50, 'Mini Pitch': 80,
-        'Mega Pitch': scarcity.get('SP', 34),
-        'Mega OF': scarcity.get('OF', 64),
-        'Mega 1B': scarcity.get('1B', 292),
-        'Mega 2B': scarcity.get('2B', 161),
-        'Mega 3B': scarcity.get('3B', 159),
-        'Mega SS': scarcity.get('SS', 203),
-        'Mega C': scarcity.get('C', 165),
-        'Mega Any': 80,
-    }
-    round_counts = {
-        'Mini Bat': 4, 'Mini Pitch': 4, 'Mega Pitch': 6, 'Mega OF': 4,
-        'Mega 1B': 2, 'Mega 2B': 2, 'Mega 3B': 2, 'Mega SS': 2,
-        'Mega C': 2, 'Mega Any': 2,
-    }
+    # --- Snake-aware value curves ---
+    # For each category, compute the total FPTS at each pick position
+    # (1-16) using actual snake pick indices into the sorted pool.
+    snake_curves = {}
+    category_pools = {}
+    for cat in DRAFT_CATEGORIES:
+        pool = build_category_pool(batters, pitchers, cat, remaining_bat, remaining_pit)
+        category_pools[cat['key']] = pool
+        curve = {}
+        for pick_pos in range(1, 17):
+            curve[str(pick_pos)] = snake_value(pool, pick_pos, cat['rounds'])
+        snake_curves[cat['key']] = curve
 
-    template_scores = {}
+    # Category importance: how much variance between best and worst pick position
+    category_importance = {}
+    for cat_key, curve in snake_curves.items():
+        vals = list(curve.values())
+        max_v, min_v = max(vals), min(vals)
+        category_importance[cat_key] = {
+            'spread': round(max_v - min_v, 1),
+            'best': round(max_v, 1),
+            'worst': round(min_v, 1),
+            'bestPick': int(max(curve, key=lambda k: curve[k])),
+            'worstPick': int(min(curve, key=lambda k: curve[k])),
+        }
+
+    # =====================================================================
+    # ROSTER-AWARE TEMPLATE SCORING with STRATEGIC MINI BAT
+    # =====================================================================
+    # Core insights:
+    # 1. Mini Bat picks cover roster positions. If your Mini Bat already
+    #    gives you a C, your Mega C pick becomes BACKUP (bench/DH/U).
+    # 2. Smart drafters should AVOID positions where they have valuable
+    #    Mega picks, and TARGET positions where Mega picks are weak.
+    # 3. Multi-position players have extra value — they provide lineup
+    #    flexibility and avoid "locking in" position coverage.
+    #
+    # BSB weekly ranked format: 8-team division, rank 0-7 for hitting
+    # AND 0-7 for pitching separately. Max 14 "wins" per week.
+    # Balance between hitting and pitching is critical.
+    #
+    # Active lineup: C, 1B, 2B, SS, 3B, DH, U, 3 OF (10 batter slots)
+    #                + 9 P (pitcher slots)
+    # =====================================================================
+
+    # Map category key to its rounds count
+    cat_rounds = {cat['key']: cat['rounds'] for cat in DRAFT_CATEGORIES}
+
+    # Map position to Mega category name
+    MEGA_POS_MAP = {'C': 'Mega C', '1B': 'Mega 1B', '2B': 'Mega 2B',
+                    '3B': 'Mega 3B', 'SS': 'Mega SS'}
+
+    def dedup_players(player_list):
+        """Remove duplicate players (same ID appearing in multiple pools)."""
+        seen = set()
+        result = []
+        for p in player_list:
+            pid = p.get('id', p.get('name'))
+            if pid not in seen:
+                seen.add(pid)
+                result.append(p)
+        return result
+
+    def identify_protect_positions(picks, curves):
+        """
+        Identify positions to PROTECT (avoid in Mini Bat) because the
+        template has an above-median Mega pick value there.
+        """
+        protect = set()
+        for pos, mega_key in MEGA_POS_MAP.items():
+            if mega_key not in curves:
+                continue
+            pick_num = picks.get(mega_key)
+            if pick_num is None:
+                continue
+            curve = curves[mega_key]
+            my_value = curve[str(pick_num)]
+            vals = sorted(curve.values(), reverse=True)
+            median_val = vals[len(vals) // 2]
+            if my_value >= median_val:
+                protect.add(pos)
+        return protect
+
+    def strategic_mini_bat(pool, pick_position, num_rounds, protect_positions,
+                           num_teams=16):
+        """
+        Select Mini Bat players strategically: at each snake pick, take the
+        best available player who does NOT conflict with a protected Mega
+        position, unless skipping costs >50 FPTS.
+
+        Returns list of selected players.
+        """
+        indices = get_snake_picks(pick_position, num_rounds, num_teams)
+        selected = []
+        taken_ids = set()
+
+        for idx in indices:
+            if idx >= len(pool):
+                continue
+
+            natural = pool[idx]
+            # Skip if already taken by an earlier pick of ours
+            if natural.get('id', natural.get('name')) in taken_ids:
+                # Find next available
+                for j in range(idx + 1, min(idx + 10, len(pool))):
+                    if pool[j].get('id', pool[j].get('name')) not in taken_ids:
+                        natural = pool[j]
+                        break
+
+            # Does the natural pick conflict with a protected position?
+            # Multi-position players only conflict if ALL their positions
+            # are protected (a 1B/OF player with only 1B protected is fine
+            # because they can play OF)
+            player_positions = set(natural.get('positions', []))
+            # Remove DH from conflict check (DH is always fine)
+            check_positions = player_positions - {'DH'}
+            conflicts = check_positions & protect_positions
+            # Only a conflict if EVERY non-DH position is protected
+            has_conflict = len(conflicts) > 0 and conflicts == check_positions
+
+            if has_conflict:
+                # Find best non-conflicting alternative nearby
+                best_alt = None
+                for j in range(idx, min(idx + 10, len(pool))):
+                    candidate = pool[j]
+                    cid = candidate.get('id', candidate.get('name'))
+                    if cid in taken_ids:
+                        continue
+                    cand_positions = set(candidate.get('positions', [])) - {'DH'}
+                    cand_conflicts = cand_positions & protect_positions
+                    cand_has_conflict = (len(cand_conflicts) > 0 and
+                                        cand_conflicts == cand_positions)
+                    if not cand_has_conflict:
+                        best_alt = candidate
+                        break
+
+                if best_alt and (natural['fpts'] - best_alt['fpts'] < 50):
+                    selected.append(best_alt)
+                    taken_ids.add(best_alt.get('id', best_alt.get('name')))
+                else:
+                    # Natural pick is too good to skip
+                    selected.append(natural)
+                    taken_ids.add(natural.get('id', natural.get('name')))
+            else:
+                selected.append(natural)
+                taken_ids.add(natural.get('id', natural.get('name')))
+
+        return selected
+
+    def build_full_roster(mini_bat_players, mini_pit_players, picks,
+                          cat_pools, cat_rnds):
+        """Build full roster from Mini Bat picks + all Mega categories."""
+        mega_of = get_players_at_picks(
+            cat_pools['Mega OF'], picks['Mega OF'], cat_rnds['Mega OF'])
+        mega_1b = get_players_at_picks(
+            cat_pools['Mega 1B'], picks['Mega 1B'], cat_rnds['Mega 1B'])
+        mega_2b = get_players_at_picks(
+            cat_pools['Mega 2B'], picks['Mega 2B'], cat_rnds['Mega 2B'])
+        mega_3b = get_players_at_picks(
+            cat_pools['Mega 3B'], picks['Mega 3B'], cat_rnds['Mega 3B'])
+        mega_ss = get_players_at_picks(
+            cat_pools['Mega SS'], picks['Mega SS'], cat_rnds['Mega SS'])
+        mega_c = get_players_at_picks(
+            cat_pools['Mega C'], picks['Mega C'], cat_rnds['Mega C'])
+        mega_pit = get_players_at_picks(
+            cat_pools['Mega Pitch'], picks['Mega Pitch'], cat_rnds['Mega Pitch'])
+
+        mega_any_players = get_players_at_picks(
+            cat_pools['Mega Any'], picks['Mega Any'], cat_rnds['Mega Any'])
+        mega_any_bat = [p for p in mega_any_players if p.get('pos') != 'P']
+        mega_any_pit = [p for p in mega_any_players if p.get('pos') == 'P']
+
+        all_bat = dedup_players(
+            mini_bat_players + mega_of + mega_1b + mega_2b +
+            mega_3b + mega_ss + mega_c + mega_any_bat)
+        all_pit = dedup_players(
+            mini_pit_players + mega_pit + mega_any_pit)
+
+        return all_bat, all_pit, mega_any_players
+
+    # --- Score each template under BOTH strategies, pick the better ---
+    template_totals = {}
+    template_hit_pit = {}
+    template_mini_picks = {}
+    template_strategy = {}  # strategy info per template
+
     for tname, picks in TEMPLATES.items():
-        total = 0
-        for cat, pick_num in picks.items():
-            scar = cat_scarcity.get(cat, 50)
-            rounds = round_counts.get(cat, 2)
-            advantage = (8.5 - pick_num) * (scar / 15) * rounds
-            total += advantage
-        template_scores[tname] = round(total, 1)
+        mini_pool = category_pools['Mini Bat']
+        mini_pit_pool = category_pools['Mini Pitch']
 
-    template_order = sorted(template_scores.keys(), key=lambda t: template_scores[t], reverse=True)
+        # Mini Pitch is the same regardless of batting strategy
+        mini_pit_players = get_players_at_picks(
+            mini_pit_pool, picks['Mini Pitch'], cat_rounds['Mini Pitch'])
+
+        # ---- Scenario 1: Best Available (greedy FPTS) ----
+        default_mini_bat = get_players_at_picks(
+            mini_pool, picks['Mini Bat'], cat_rounds['Mini Bat'])
+        def_bat, def_pit, def_any = build_full_roster(
+            default_mini_bat, mini_pit_players, picks,
+            category_pools, cat_rounds)
+        def_hit, def_pit_fpts, _ = assign_optimal_lineup(def_bat, def_pit)
+        default_total = def_hit + def_pit_fpts
+
+        # ---- Scenario 2: Strategic (avoid strong Mega positions) ----
+        protect_pos = identify_protect_positions(picks, snake_curves)
+        smart_mini_bat = strategic_mini_bat(
+            mini_pool, picks['Mini Bat'], cat_rounds['Mini Bat'], protect_pos)
+        smart_bat, smart_pit, smart_any = build_full_roster(
+            smart_mini_bat, mini_pit_players, picks,
+            category_pools, cat_rounds)
+        smart_hit, smart_pit_fpts, smart_lineup = assign_optimal_lineup(
+            smart_bat, smart_pit)
+        smart_total = smart_hit + smart_pit_fpts
+
+        # Pick the better scenario
+        if smart_total >= default_total:
+            use_strategic = True
+            mini_bat_players = smart_mini_bat
+            hit_fpts, pit_fpts = smart_hit, smart_pit_fpts
+            lineup = smart_lineup
+            mega_any_players = smart_any
+        else:
+            use_strategic = False
+            mini_bat_players = default_mini_bat
+            hit_fpts, pit_fpts = def_hit, def_pit_fpts
+            mega_any_players = def_any
+
+        total = hit_fpts + pit_fpts
+        template_totals[tname] = round(total, 1)
+
+        # Track Mini Bat details
+        mini_positions = set()
+        for p in mini_bat_players:
+            mini_positions.update(p.get('positions', []))
+
+        # Multi-position count for each player
+        mini_player_info = []
+        for p in mini_bat_players:
+            pos_list = p.get('positions', [])
+            mini_player_info.append({
+                'name': p['name'], 'pos': p['pos'], 'fpts': p['fpts'],
+                'positions': pos_list,
+                'multiPos': len(pos_list) > 1,
+            })
+
+        template_mini_picks[tname] = {
+            'players': mini_player_info,
+            'coveredPositions': sorted(list(mini_positions)),
+        }
+
+        # Strategy recommendation
+        target_positions = set()
+        for pos, mega_key in MEGA_POS_MAP.items():
+            if pos not in protect_pos:
+                target_positions.add(pos)
+
+        template_strategy[tname] = {
+            'protectPositions': sorted(protect_pos),
+            'targetPositions': sorted(target_positions),
+            'usedStrategic': use_strategic,
+            'defaultTotal': round(default_total, 1),
+            'smartTotal': round(smart_total, 1),
+            'improvement': round(smart_total - default_total, 1),
+        }
+
+        template_hit_pit[tname] = {
+            'hitFpts': round(hit_fpts, 1),
+            'pitFpts': round(pit_fpts, 1),
+            'anyFpts': round(sum(p['fpts'] for p in mega_any_players), 1),
+        }
+
+    # --- Balance-adjusted scoring ---
+    avg_hit = sum(v['hitFpts'] for v in template_hit_pit.values()) / len(template_hit_pit)
+    avg_pit = sum(v['pitFpts'] for v in template_hit_pit.values()) / len(template_hit_pit)
+
+    # Balance-adjusted score: raw advantage minus 30% penalty for hit/pitch gap.
+    # In the weekly ranked format, surplus on one side has diminishing returns
+    # (can't rank higher than 1st) while deficit on the other costs wins.
+    template_scores = {}
+    for t, total in template_totals.items():
+        hp = template_hit_pit[t]
+        hit_adv = hp['hitFpts'] - avg_hit
+        pit_adv = hp['pitFpts'] - avg_pit
+        gap = abs(hit_adv - pit_adv)
+        balanced_score = (hit_adv + pit_adv) - (gap * 0.3)
+        template_scores[t] = round(balanced_score, 1)
+        # Enrich hit/pit data with advantages
+        hp['hitAdv'] = round(hit_adv, 1)
+        hp['pitAdv'] = round(pit_adv, 1)
+        hp['weaker'] = 'HIT' if hit_adv < pit_adv else 'PIT'
+
+    template_order = sorted(template_scores.keys(),
+                            key=lambda t: template_scores[t], reverse=True)
 
     return {
         'scarcity': scarcity,
         'templateScores': template_scores,
         'templateOrder': template_order,
+        'templateTotals': template_totals,
+        'templateHitPit': template_hit_pit,
+        'templateMiniPicks': template_mini_picks,
+        'templateStrategy': template_strategy,
         'miniPoaching': dict(Counter(b['pos'] for b in batters[:MINI_SIZE])),
+        'snakeCurves': snake_curves,
+        'categoryImportance': category_importance,
     }
 
 
@@ -566,15 +954,61 @@ def main():
         'batting': {'R': 1, 'TB': 1, 'BB': 1, 'RBI': 1, 'SB': 1},
         'pitching': {
             'IP': 3, 'K': 1, 'W': 10, 'SV': 8, 'HLD': 6, 'QS': 4,
-            'CG': 5, 'IRS': 2, 'ER': -2, 'BB': -1, 'H': -1,
+            'CG': 5, 'IRSTR': 2, 'ER': -2, 'BB': -1, 'H': -1,
         },
     })
 
     print(f"\n✅ Done! {len(batters[:300])} batters, {len(pitchers[:300])} pitchers")
     print(f"Top batter: {batters[0]['name']} ({batters[0]['fpts']} FPTS)")
     print(f"Top pitcher: {pitchers[0]['name']} ({pitchers[0]['fpts']} FPTS)")
-    print(f"Template ranking: {', '.join(analysis['templateOrder'][:5])}...")
-    print(f"Post-Mini scarcity: {json.dumps(analysis['scarcity'])}")
+
+    print(f"\n{'='*70}")
+    print(f"  TEMPLATE RANKING (roster-optimized, balance-adjusted)")
+    print(f"  Starting lineup FPTS only — bench players contribute 0")
+    print(f"{'='*70}")
+    print(f"  {'#':>2}  {'T':>1}  {'Score':>6}  {'Start':>7}  {'Hit':>6}  {'Pit':>6}  "
+          f"{'Hit±':>6}  {'Pit±':>6}  Weak")
+    print(f"  {'-'*65}")
+    for i, t in enumerate(analysis['templateOrder']):
+        score = analysis['templateScores'][t]
+        total = analysis['templateTotals'][t]
+        hp = analysis['templateHitPit'][t]
+        sign = '+' if score > 0 else ''
+        print(f"  {i+1:2}. {t}  {sign}{score:>5.0f}  {total:>7,.0f}  "
+              f"{hp['hitFpts']:>6,.0f}  {hp['pitFpts']:>6,.0f}  "
+              f"{hp['hitAdv']:>+5.0f}  {hp['pitAdv']:>+5.0f}  {hp['weaker']}")
+
+    print(f"\n  Mini Bat position coverage by template:")
+    for t in analysis['templateOrder']:
+        mp = analysis['templateMiniPicks'][t]
+        pos_str = ', '.join(mp['coveredPositions'])
+        players = ', '.join(f"{p['name']}({p['pos']})" for p in mp['players'])
+        print(f"    {t}: [{pos_str}] — {players}")
+
+    # Strategic Mini Bat analysis
+    print(f"\n{'='*70}")
+    print(f"  STRATEGIC MINI BAT TARGETING")
+    print(f"  Protect = positions with strong Mega picks (avoid in Mini Bat)")
+    print(f"  Target  = positions where Mega picks are weak (draft in Mini Bat)")
+    print(f"{'='*70}")
+    print(f"  {'T':>1}  {'Protect':18s}  {'Target':18s}  {'Strat?':>5}  {'Improve':>7}")
+    print(f"  {'-'*60}")
+    for t in analysis['templateOrder']:
+        strat = analysis['templateStrategy'][t]
+        protect = ', '.join(strat['protectPositions']) or '—'
+        target = ', '.join(strat['targetPositions']) or '—'
+        used = '  ✓' if strat['usedStrategic'] else '  —'
+        imp = strat['improvement']
+        imp_str = f"{imp:>+6.1f}" if imp != 0 else '     0'
+        print(f"  {t}  {protect:18s}  {target:18s}  {used:>5}  {imp_str}")
+
+    print(f"\nPost-Mini scarcity: {json.dumps(analysis['scarcity'])}")
+    print(f"\nCategory importance (spread between best & worst pick):")
+    for cat_key, info in sorted(analysis['categoryImportance'].items(),
+                                 key=lambda x: x[1]['spread'], reverse=True):
+        side = 'PIT' if cat_key in ('Mini Pitch', 'Mega Pitch') else ('ANY' if cat_key == 'Mega Any' else 'HIT')
+        print(f"  [{side:3s}] {cat_key:12s}: {info['spread']:5.0f} FPTS spread  "
+              f"(best=pick {info['bestPick']}, worst=pick {info['worstPick']})")
 
 
 if __name__ == '__main__':
