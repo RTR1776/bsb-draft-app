@@ -14,6 +14,7 @@ import urllib.request
 import os
 import math
 import time
+import random
 from collections import Counter
 
 OUTPUT_DIR = os.path.join(os.path.dirname(__file__), '..', 'src', 'data')
@@ -799,25 +800,83 @@ def analyze_scarcity(batters, pitchers):
             'anyFpts': round(sum(p['fpts'] for p in mega_any_players), 1),
         }
 
-    # --- Balance-adjusted scoring ---
+    # --- Enrich hit/pit data with advantages ---
     avg_hit = sum(v['hitFpts'] for v in template_hit_pit.values()) / len(template_hit_pit)
     avg_pit = sum(v['pitFpts'] for v in template_hit_pit.values()) / len(template_hit_pit)
-
-    # Balance-adjusted score: raw advantage minus 30% penalty for hit/pitch gap.
-    # In the weekly ranked format, surplus on one side has diminishing returns
-    # (can't rank higher than 1st) while deficit on the other costs wins.
-    template_scores = {}
-    for t, total in template_totals.items():
+    for t in template_hit_pit:
         hp = template_hit_pit[t]
         hit_adv = hp['hitFpts'] - avg_hit
         pit_adv = hp['pitFpts'] - avg_pit
-        gap = abs(hit_adv - pit_adv)
-        balanced_score = (hit_adv + pit_adv) - (gap * 0.3)
-        template_scores[t] = round(balanced_score, 1)
-        # Enrich hit/pit data with advantages
         hp['hitAdv'] = round(hit_adv, 1)
         hp['pitAdv'] = round(pit_adv, 1)
         hp['weaker'] = 'HIT' if hit_adv < pit_adv else 'PIT'
+
+    # --- Monte Carlo Weekly Standings Simulation ---
+    # In BSB ranked scoring, each week you earn 0-7 pts for hitting rank +
+    # 0-7 pts for pitching rank in your 8-team division.
+    # Winning by 100 = winning by 1. Balance matters more than raw totals.
+    N_SEASONS = 20000
+    N_WEEKS = 27
+    DIV_SIZE = 8
+
+    # Team-level weekly CVs (individual CV / sqrt(n_players) + correlation)
+    HIT_CV = 0.12   # ~15 batters, individual CV ~0.45
+    PIT_CV = 0.25   # ~9 pitchers, individual CV ~0.70, 2-start volatility
+
+    t_names = sorted(template_hit_pit.keys())
+    hit_means = {t: template_hit_pit[t]['hitFpts'] / N_WEEKS for t in t_names}
+    pit_means = {t: template_hit_pit[t]['pitFpts'] / N_WEEKS for t in t_names}
+
+    season_totals = {t: 0.0 for t in t_names}
+    hit_rank_totals = {t: 0.0 for t in t_names}
+    pit_rank_totals = {t: 0.0 for t in t_names}
+
+    random.seed(42)  # Reproducible results
+    for _ in range(N_SEASONS):
+        shuffled = t_names[:]
+        random.shuffle(shuffled)
+        div1 = shuffled[:DIV_SIZE]
+        div2 = shuffled[DIV_SIZE:]
+
+        season_pts = {t: 0 for t in t_names}
+        season_hit_pts = {t: 0 for t in t_names}
+        season_pit_pts = {t: 0 for t in t_names}
+
+        for _ in range(N_WEEKS):
+            weekly_hit = {t: random.gauss(hit_means[t], hit_means[t] * HIT_CV) for t in t_names}
+            weekly_pit = {t: random.gauss(pit_means[t], pit_means[t] * PIT_CV) for t in t_names}
+
+            for div_teams in [div1, div2]:
+                hit_ranked = sorted(div_teams, key=lambda t: weekly_hit[t], reverse=True)
+                pit_ranked = sorted(div_teams, key=lambda t: weekly_pit[t], reverse=True)
+                for rank, t in enumerate(hit_ranked):
+                    pts = DIV_SIZE - 1 - rank  # 7,6,5,4,3,2,1,0
+                    season_pts[t] += pts
+                    season_hit_pts[t] += pts
+                for rank, t in enumerate(pit_ranked):
+                    pts = DIV_SIZE - 1 - rank
+                    season_pts[t] += pts
+                    season_pit_pts[t] += pts
+
+        for t in t_names:
+            season_totals[t] += season_pts[t]
+            hit_rank_totals[t] += season_hit_pts[t]
+            pit_rank_totals[t] += season_pit_pts[t]
+
+    # Average per-week standings points
+    template_scores = {}
+    standings_detail = {}
+    for t in t_names:
+        avg_total = season_totals[t] / N_SEASONS / N_WEEKS
+        avg_hit_pts = hit_rank_totals[t] / N_SEASONS / N_WEEKS
+        avg_pit_pts = pit_rank_totals[t] / N_SEASONS / N_WEEKS
+        template_scores[t] = round(avg_total, 2)
+        standings_detail[t] = {
+            'weeklyPts': round(avg_total, 2),
+            'hitPts': round(avg_hit_pts, 2),
+            'pitPts': round(avg_pit_pts, 2),
+            'seasonPts': round(season_totals[t] / N_SEASONS, 1),
+        }
 
     template_order = sorted(template_scores.keys(),
                             key=lambda t: template_scores[t], reverse=True)
@@ -828,6 +887,7 @@ def analyze_scarcity(batters, pitchers):
         'templateOrder': template_order,
         'templateTotals': template_totals,
         'templateHitPit': template_hit_pit,
+        'standingsDetail': standings_detail,
         'templateMiniPicks': template_mini_picks,
         'templateStrategy': template_strategy,
         'miniPoaching': dict(Counter(b['pos'] for b in batters[:MINI_SIZE])),
@@ -962,21 +1022,20 @@ def main():
     print(f"Top batter: {batters[0]['name']} ({batters[0]['fpts']} FPTS)")
     print(f"Top pitcher: {pitchers[0]['name']} ({pitchers[0]['fpts']} FPTS)")
 
-    print(f"\n{'='*70}")
-    print(f"  TEMPLATE RANKING (roster-optimized, balance-adjusted)")
-    print(f"  Starting lineup FPTS only — bench players contribute 0")
-    print(f"{'='*70}")
-    print(f"  {'#':>2}  {'T':>1}  {'Score':>6}  {'Start':>7}  {'Hit':>6}  {'Pit':>6}  "
-          f"{'Hit±':>6}  {'Pit±':>6}  Weak")
-    print(f"  {'-'*65}")
+    print(f"\n{'='*75}")
+    print(f"  TEMPLATE RANKING (Monte Carlo Weekly Standings Simulation)")
+    print(f"  {analysis['standingsDetail'][analysis['templateOrder'][0]].get('_meta', '20k seasons × 27 wks, random divisions, ranked 0-7 hit+pit')}")
+    print(f"{'='*75}")
+    print(f"  {'#':>2}  {'T':>1}  {'Pts/Wk':>7}  {'Hit':>5}  {'Pit':>5}  {'Season':>7}  "
+          f"{'FPTS':>7}  {'Hit±':>5}  {'Pit±':>5}")
+    print(f"  {'-'*70}")
     for i, t in enumerate(analysis['templateOrder']):
-        score = analysis['templateScores'][t]
+        sd = analysis['standingsDetail'][t]
         total = analysis['templateTotals'][t]
         hp = analysis['templateHitPit'][t]
-        sign = '+' if score > 0 else ''
-        print(f"  {i+1:2}. {t}  {sign}{score:>5.0f}  {total:>7,.0f}  "
-              f"{hp['hitFpts']:>6,.0f}  {hp['pitFpts']:>6,.0f}  "
-              f"{hp['hitAdv']:>+5.0f}  {hp['pitAdv']:>+5.0f}  {hp['weaker']}")
+        print(f"  {i+1:2}. {t}  {sd['weeklyPts']:>6.2f}  {sd['hitPts']:>5.2f}  "
+              f"{sd['pitPts']:>5.2f}  {sd['seasonPts']:>6.1f}  "
+              f"{total:>7,.0f}  {hp['hitAdv']:>+5.0f}  {hp['pitAdv']:>+5.0f}")
 
     print(f"\n  Mini Bat position coverage by template:")
     for t in analysis['templateOrder']:

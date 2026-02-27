@@ -9,10 +9,18 @@ export function TemplatePanel({
 }) {
   const order = analysis.templateOrder || Object.keys(templates)
   const scores = analysis.templateScores || {}
+  const details = analysis.standingsDetail || {}
+  const topScore = scores[order[0]] || 7
+  const midScore = 7.0 // perfectly average = 3.5 hit + 3.5 pit
   return (
     <div className="space-y-1">
-      <h3 className="text-sm font-bold text-bsb-dim uppercase tracking-wider mb-2">Template Priority</h3>
-      {order.map((t: string, i: number) => (
+      <h3 className="text-sm font-bold text-bsb-dim uppercase tracking-wider mb-2">Template Rankings</h3>
+      <p className="text-[9px] text-bsb-dim mb-2 leading-tight">Standings pts/week (0-14) via 20k-season Monte Carlo. Balance wins in ranked scoring.</p>
+      {order.map((t: string, i: number) => {
+        const detail = details[t]
+        const score = scores[t] || 0
+        const aboveAvg = score >= midScore
+        return (
         <div
           key={t}
           onClick={() => onSelect(t)}
@@ -26,14 +34,22 @@ export function TemplatePanel({
             i < 4 ? 'bg-bsb-gold text-bsb-navy' : 'bg-white/10 text-bsb-dim'
           }`}>{i + 1}</span>
           <span className="font-bold w-6">{t}</span>
-          <span className={`text-sm font-mono font-bold px-1.5 rounded ${scores[t] > 0 ? 'text-green-400 bg-green-400/10' : 'text-red-400 bg-red-400/10'}`}>
-            {scores[t] > 0 ? '+' : ''}{Math.round(scores[t])}
+          <span className={`text-sm font-mono font-bold px-1.5 rounded ${aboveAvg ? 'text-green-400 bg-green-400/10' : 'text-red-400 bg-red-400/10'}`}>
+            {score.toFixed(1)}
           </span>
+          {detail && (
+            <span className="text-[9px] text-bsb-dim font-mono ml-auto mr-1">
+              <span className="text-blue-400">{detail.hitPts?.toFixed(1)}</span>
+              <span className="mx-0.5">/</span>
+              <span className="text-red-400">{detail.pitPts?.toFixed(1)}</span>
+            </span>
+          )}
           {selected === t && (
-            <span className="ml-auto text-[10px] text-bsb-accent">★ MINE</span>
+            <span className="text-[10px] text-bsb-accent">★</span>
           )}
         </div>
-      ))}
+        )
+      })}
     </div>
   )
 }

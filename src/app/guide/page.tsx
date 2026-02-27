@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
+import analysisData from '@/data/analysis.json'
 
 // ─── Animated section wrapper ─────────────────────
 function Section({ children, delay = 0 }: { children: React.ReactNode; delay?: number }) {
@@ -126,7 +127,8 @@ export default function GuidePage() {
     { id: 'scoring', label: 'Scoring' },
     { id: 'smart-numbers', label: 'Smart Numbers' },
     { id: 'draft-format', label: 'Draft Format' },
-    { id: 'how-to-use', label: 'How to Use' },
+    { id: 'templates', label: 'Templates' },
+    { id: 'draft-day', label: 'Draft Day' },
     { id: 'player-cards', label: 'Player Cards' },
     { id: 'sidebars', label: 'Sidebars' },
     { id: 'recommendations', label: 'Recs' },
@@ -436,107 +438,373 @@ export default function GuidePage() {
             </div>
           </Section>
 
-          {/* Templates */}
-          <Section delay={200}>
-            <div className="mt-6 rounded-2xl bg-gradient-to-r from-bsb-mid/30 to-transparent border border-white/[0.08] p-6">
-              <div className="flex items-center gap-3 mb-3">
-                <span className="text-2xl">🎫</span>
-                <h3 className="text-white font-bold text-lg">Templates (A through P)</h3>
+        </section>
+
+        {/* ═══════════════════════════════════════ */}
+        {/* TEMPLATE ANALYSIS */}
+        {/* ═══════════════════════════════════════ */}
+        <section id="templates" ref={registerSection('templates')} className="pt-24">
+          <Section>
+            <div className="flex items-center gap-3 mb-2">
+              <span className="text-3xl">🎫</span>
+              <div>
+                <h2 className="text-3xl font-black text-white">Template Rankings</h2>
+                <p className="text-bsb-dim text-sm mt-1">Which template should you pick? We simulated 20,000 seasons to find out.</p>
               </div>
-              <p className="text-bsb-dim text-sm leading-relaxed mb-4">
-                Before the draft, each team selects a template letter (A–P). Your template determines your pick number in every category. Template A might give you pick #1 in Mini Bat but #16 in Mini Pitch. It&apos;s all about tradeoffs.
+            </div>
+          </Section>
+
+          <Section delay={100}>
+            <div className="mt-8 rounded-2xl bg-gradient-to-r from-bsb-gold/10 to-transparent border border-bsb-gold/20 p-6">
+              <div className="flex items-center gap-2 mb-3">
+                <span className="text-xl">🎲</span>
+                <h3 className="text-white font-bold text-lg">Monte Carlo Standings Simulation</h3>
+              </div>
+              <p className="text-bsb-dim text-sm leading-relaxed mb-3">
+                Each template was simulated through <span className="text-bsb-gold font-bold">20,000 full seasons</span> (27 weeks each), with random 8-team division assignments. Every week, teams earn <span className="text-blue-400 font-bold">0-7 points</span> for hitting rank in their division + <span className="text-red-400 font-bold">0-7 points</span> for pitching rank.
               </p>
-              <p className="text-bsb-dim text-sm leading-relaxed">
-                The app ranks templates by calculating a <span className="text-bsb-gold font-bold">Template Score</span> based on post-Mini scarcity. Templates that give you early picks at scarce positions rank higher. The left sidebar shows this ranking to help you choose.
+              <div className="bg-white/[0.04] rounded-xl p-4 border border-white/[0.06]">
+                <p className="text-white text-sm font-bold mb-1">💡 Why Balance Matters</p>
+                <p className="text-bsb-dim text-xs leading-relaxed">
+                  In ranked scoring, winning your division in pitching by 100 FPTS earns the same 7 points as winning by 1. Excess points on one side are <span className="text-red-400 font-bold">wasted</span> while weakness on the other side costs you <span className="text-red-400 font-bold">every single week</span>. Templates that are strong on BOTH sides consistently outperform those that dominate just one.
+                </p>
+              </div>
+            </div>
+          </Section>
+
+          {/* Tier 1 */}
+          <Section delay={200}>
+            <div className="mt-6">
+              <div className="flex items-center gap-2 mb-3">
+                <span className="px-2.5 py-1 rounded-lg bg-gradient-to-r from-amber-500 to-yellow-400 text-black text-xs font-black">TIER 1</span>
+                <span className="text-white font-bold text-sm">Elite Templates</span>
+                <span className="text-bsb-dim text-xs ml-auto">Target these first</span>
+              </div>
+              <div className="space-y-2">
+                {(analysisData as any).templateOrder.slice(0, 4).map((t: string, i: number) => {
+                  const sd = (analysisData as any).standingsDetail[t]
+                  const hp = (analysisData as any).templateHitPit[t]
+                  const mp = (analysisData as any).templateMiniPicks[t]
+                  return (
+                    <div key={t} className="rounded-xl border border-bsb-gold/20 bg-bsb-gold/[0.04] p-4">
+                      <div className="flex items-center gap-3 mb-2">
+                        <span className="w-6 h-6 rounded bg-bsb-gold text-bsb-navy flex items-center justify-center text-xs font-black">{i + 1}</span>
+                        <span className="text-white text-lg font-black">Template {t}</span>
+                        <span className="ml-auto text-bsb-gold font-mono text-sm font-bold">{sd.weeklyPts.toFixed(2)} pts/wk</span>
+                      </div>
+                      <div className="grid grid-cols-4 gap-3 text-center mb-2">
+                        <div><span className="text-blue-400 text-xs font-bold">{sd.hitPts.toFixed(2)}</span><span className="block text-[9px] text-bsb-dim">Hit Pts</span></div>
+                        <div><span className="text-red-400 text-xs font-bold">{sd.pitPts.toFixed(2)}</span><span className="block text-[9px] text-bsb-dim">Pit Pts</span></div>
+                        <div><span className={`text-xs font-bold ${hp.hitAdv > 0 ? 'text-green-400' : 'text-red-400'}`}>{hp.hitAdv > 0 ? '+' : ''}{Math.round(hp.hitAdv)}</span><span className="block text-[9px] text-bsb-dim">Hit Adv</span></div>
+                        <div><span className={`text-xs font-bold ${hp.pitAdv > 0 ? 'text-green-400' : 'text-red-400'}`}>{hp.pitAdv > 0 ? '+' : ''}{Math.round(hp.pitAdv)}</span><span className="block text-[9px] text-bsb-dim">Pit Adv</span></div>
+                      </div>
+                      <div className="text-[10px] text-bsb-dim">
+                        Mini picks: {mp.players.map((p: any) => p.name).join(', ')}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          </Section>
+
+          {/* Tier 2 */}
+          <Section delay={300}>
+            <div className="mt-6">
+              <div className="flex items-center gap-2 mb-3">
+                <span className="px-2.5 py-1 rounded-lg bg-blue-500/20 text-blue-400 text-xs font-black">TIER 2</span>
+                <span className="text-white font-bold text-sm">Strong Contenders</span>
+                <span className="text-bsb-dim text-xs ml-auto">Good options</span>
+              </div>
+              <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] overflow-hidden">
+                {(analysisData as any).templateOrder.slice(4, 8).map((t: string, i: number) => {
+                  const sd = (analysisData as any).standingsDetail[t]
+                  const hp = (analysisData as any).templateHitPit[t]
+                  return (
+                    <div key={t} className="flex items-center gap-3 px-4 py-2.5 border-b border-white/[0.04]">
+                      <span className="w-5 h-5 rounded bg-blue-500/20 text-blue-400 flex items-center justify-center text-[10px] font-black">{i + 5}</span>
+                      <span className="text-white font-bold w-6">{t}</span>
+                      <span className="text-green-400 font-mono text-xs font-bold">{sd.weeklyPts.toFixed(2)}</span>
+                      <span className="text-[10px] text-bsb-dim ml-auto">
+                        <span className="text-blue-400">{sd.hitPts.toFixed(1)}</span> / <span className="text-red-400">{sd.pitPts.toFixed(1)}</span>
+                      </span>
+                      <span className={`text-[10px] font-bold w-10 text-right ${hp.hitAdv > 0 ? 'text-green-400' : 'text-red-400'}`}>{hp.hitAdv > 0 ? '+' : ''}{Math.round(hp.hitAdv)}</span>
+                      <span className={`text-[10px] font-bold w-10 text-right ${hp.pitAdv > 0 ? 'text-green-400' : 'text-red-400'}`}>{hp.pitAdv > 0 ? '+' : ''}{Math.round(hp.pitAdv)}</span>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          </Section>
+
+          {/* Tier 3 */}
+          <Section delay={350}>
+            <div className="mt-6">
+              <div className="flex items-center gap-2 mb-3">
+                <span className="px-2.5 py-1 rounded-lg bg-white/10 text-white/60 text-xs font-black">TIER 3</span>
+                <span className="text-white font-bold text-sm">Average</span>
+                <span className="text-bsb-dim text-xs ml-auto">Workable but not ideal</span>
+              </div>
+              <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] overflow-hidden">
+                {(analysisData as any).templateOrder.slice(8, 12).map((t: string, i: number) => {
+                  const sd = (analysisData as any).standingsDetail[t]
+                  const hp = (analysisData as any).templateHitPit[t]
+                  return (
+                    <div key={t} className="flex items-center gap-3 px-4 py-2.5 border-b border-white/[0.04]">
+                      <span className="w-5 h-5 rounded bg-white/10 text-white/50 flex items-center justify-center text-[10px] font-black">{i + 9}</span>
+                      <span className="text-white/70 font-bold w-6">{t}</span>
+                      <span className="text-red-400 font-mono text-xs font-bold">{sd.weeklyPts.toFixed(2)}</span>
+                      <span className="text-[10px] text-bsb-dim ml-auto">
+                        <span className="text-blue-400/60">{sd.hitPts.toFixed(1)}</span> / <span className="text-red-400/60">{sd.pitPts.toFixed(1)}</span>
+                      </span>
+                      <span className={`text-[10px] font-bold w-10 text-right ${hp.hitAdv > 0 ? 'text-green-400' : 'text-red-400'}`}>{hp.hitAdv > 0 ? '+' : ''}{Math.round(hp.hitAdv)}</span>
+                      <span className={`text-[10px] font-bold w-10 text-right ${hp.pitAdv > 0 ? 'text-green-400' : 'text-red-400'}`}>{hp.pitAdv > 0 ? '+' : ''}{Math.round(hp.pitAdv)}</span>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          </Section>
+
+          {/* Tier 4 */}
+          <Section delay={400}>
+            <div className="mt-6">
+              <div className="flex items-center gap-2 mb-3">
+                <span className="px-2.5 py-1 rounded-lg bg-red-500/20 text-red-400 text-xs font-black">TIER 4</span>
+                <span className="text-white font-bold text-sm">Avoid If Possible</span>
+                <span className="text-bsb-dim text-xs ml-auto">Structurally disadvantaged</span>
+              </div>
+              <div className="rounded-xl border border-red-500/10 bg-red-500/[0.02] overflow-hidden">
+                {(analysisData as any).templateOrder.slice(12).map((t: string, i: number) => {
+                  const sd = (analysisData as any).standingsDetail[t]
+                  const hp = (analysisData as any).templateHitPit[t]
+                  return (
+                    <div key={t} className="flex items-center gap-3 px-4 py-2.5 border-b border-white/[0.04]">
+                      <span className="w-5 h-5 rounded bg-red-500/20 text-red-400 flex items-center justify-center text-[10px] font-black">{i + 13}</span>
+                      <span className="text-white/50 font-bold w-6">{t}</span>
+                      <span className="text-red-400 font-mono text-xs font-bold">{sd.weeklyPts.toFixed(2)}</span>
+                      <span className="text-[10px] text-bsb-dim ml-auto">
+                        <span className="text-blue-400/40">{sd.hitPts.toFixed(1)}</span> / <span className="text-red-400/40">{sd.pitPts.toFixed(1)}</span>
+                      </span>
+                      <span className={`text-[10px] font-bold w-10 text-right ${hp.hitAdv > 0 ? 'text-green-400' : 'text-red-400'}`}>{hp.hitAdv > 0 ? '+' : ''}{Math.round(hp.hitAdv)}</span>
+                      <span className={`text-[10px] font-bold w-10 text-right ${hp.pitAdv > 0 ? 'text-green-400' : 'text-red-400'}`}>{hp.pitAdv > 0 ? '+' : ''}{Math.round(hp.pitAdv)}</span>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          </Section>
+
+          {/* Category Importance */}
+          <Section delay={450}>
+            <div className="mt-6 rounded-2xl border border-white/[0.06] bg-white/[0.02] p-6">
+              <h3 className="text-white font-bold text-sm mb-1">📊 Why Mini Picks Are Everything</h3>
+              <p className="text-bsb-dim text-xs leading-relaxed mb-4">
+                The FPTS spread between the best and worst pick slot varies enormously by category. Mini Pitch and Mini Bat have <span className="text-bsb-gold font-bold">5-7× more impact</span> than Mega categories. This is why templates with strong Mini positions dominate.
               </p>
+              <div className="space-y-2">
+                {[
+                  { cat: 'Mini Pitch', spread: 135, max: 150, color: 'bg-red-500' },
+                  { cat: 'Mini Bat', spread: 111, max: 150, color: 'bg-blue-500' },
+                  { cat: 'Mega C', spread: 86, max: 150, color: 'bg-teal-500' },
+                  { cat: 'Mega 2B', spread: 67, max: 150, color: 'bg-green-500' },
+                  { cat: 'Mega 1B', spread: 65, max: 150, color: 'bg-green-500' },
+                  { cat: 'Mega SS', spread: 45, max: 150, color: 'bg-cyan-500' },
+                  { cat: 'Mega 3B', spread: 49, max: 150, color: 'bg-cyan-500' },
+                  { cat: 'Mega OF', spread: 23, max: 150, color: 'bg-white/30' },
+                  { cat: 'Mega Pitch', spread: 20, max: 150, color: 'bg-white/30' },
+                  { cat: 'Mega Any', spread: 9, max: 150, color: 'bg-white/20' },
+                ].map(bar => (
+                  <div key={bar.cat} className="flex items-center gap-2">
+                    <span className="text-[10px] text-bsb-dim w-20 text-right shrink-0">{bar.cat}</span>
+                    <div className="flex-1 h-3 bg-white/[0.04] rounded-full overflow-hidden">
+                      <div className={`h-full ${bar.color} rounded-full`} style={{ width: `${(bar.spread / bar.max) * 100}%` }} />
+                    </div>
+                    <span className="text-[10px] text-white/70 font-mono w-10 text-right">{bar.spread}</span>
+                  </div>
+                ))}
+              </div>
             </div>
           </Section>
         </section>
 
         {/* ═══════════════════════════════════════ */}
-        {/* HOW TO USE */}
+        {/* DRAFT DAY PLAYBOOK */}
         {/* ═══════════════════════════════════════ */}
-        <section id="how-to-use" ref={registerSection('how-to-use')} className="pt-24">
+        <section id="draft-day" ref={registerSection('draft-day')} className="pt-24">
           <Section>
             <div className="flex items-center gap-3 mb-2">
-              <span className="text-3xl">🎮</span>
+              <span className="text-3xl">🎯</span>
               <div>
-                <h2 className="text-3xl font-black text-white">How to Use the App</h2>
-                <p className="text-bsb-dim text-sm mt-1">Everything you need to know for draft day.</p>
+                <h2 className="text-3xl font-black text-white">Draft Day Playbook</h2>
+                <p className="text-bsb-dim text-sm mt-1">Your step-by-step guide from template selection to the final pick.</p>
               </div>
             </div>
           </Section>
 
-          <div className="grid md:grid-cols-2 gap-6 mt-8">
-            {/* Before */}
-            <Section delay={100}>
-              <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-6">
-                <h3 className="text-white font-bold text-lg mb-4 flex items-center gap-2">
-                  <span className="w-7 h-7 rounded-full bg-blue-500/20 text-blue-400 flex items-center justify-center text-xs font-black">1</span>
-                  Before the Draft
-                </h3>
-                <div className="space-y-3 text-sm">
-                  <div className="flex gap-3">
-                    <span className="text-bsb-gold shrink-0">→</span>
-                    <span className="text-white/80"><strong className="text-white">Browse players</strong> — Scroll the main board to see all 600 players ranked by FPTS.</span>
-                  </div>
-                  <div className="flex gap-3">
-                    <span className="text-bsb-gold shrink-0">→</span>
-                    <span className="text-white/80"><strong className="text-white">Filter by position</strong> — Click the position buttons (C, 1B, 2B, 3B, SS, OF, SP, RP).</span>
-                  </div>
-                  <div className="flex gap-3">
-                    <span className="text-bsb-gold shrink-0">→</span>
-                    <span className="text-white/80"><strong className="text-white">Search</strong> — Press <Kbd>/</Kbd> or <Kbd>Ctrl+K</Kbd> and type any player name or team.</span>
-                  </div>
-                  <div className="flex gap-3">
-                    <span className="text-bsb-gold shrink-0">→</span>
-                    <span className="text-white/80"><strong className="text-white">Pick your template</strong> — Click a template letter in the left sidebar.</span>
-                  </div>
-                  <div className="flex gap-3">
-                    <span className="text-bsb-gold shrink-0">→</span>
-                    <span className="text-white/80"><strong className="text-white">Study player cards</strong> — Click any player&apos;s name to open their full scouting card.</span>
-                  </div>
+          {/* STEP 1: Pre-Draft */}
+          <Section delay={100}>
+            <div className="mt-8 rounded-2xl border border-blue-500/20 bg-blue-500/[0.03] p-6">
+              <h3 className="text-white font-bold text-lg mb-4 flex items-center gap-2">
+                <span className="w-8 h-8 rounded-full bg-blue-500 text-white flex items-center justify-center text-sm font-black">1</span>
+                Before Draft Day — Preparation
+              </h3>
+              <div className="space-y-3 text-sm">
+                <div className="flex gap-3">
+                  <span className="text-blue-400 shrink-0 font-bold">□</span>
+                  <span className="text-white/80"><strong className="text-white">Pick your template</strong> — Click a template letter in the left sidebar. The app ranks them by expected standings points. Grab from <span className="text-bsb-gold font-bold">Tier 1</span> if you can (N, I, H, or L).</span>
+                </div>
+                <div className="flex gap-3">
+                  <span className="text-blue-400 shrink-0 font-bold">□</span>
+                  <span className="text-white/80"><strong className="text-white">Study your Mini picks</strong> — Once you select a template, look at who you&apos;ll likely get in Mini Bat and Mini Pitch. These are your most impactful rounds.</span>
+                </div>
+                <div className="flex gap-3">
+                  <span className="text-blue-400 shrink-0 font-bold">□</span>
+                  <span className="text-white/80"><strong className="text-white">Know your weak positions</strong> — Check the Template Detail panel. Where do you pick late (#12-16)? That&apos;s where you&apos;ll need depth from Mini Bat and Mega Any.</span>
+                </div>
+                <div className="flex gap-3">
+                  <span className="text-blue-400 shrink-0 font-bold">□</span>
+                  <span className="text-white/80"><strong className="text-white">Click player names</strong> — Open player cards for your top targets. Check injury flags, consistency grades, and the BSB projection vs Steamer comparison.</span>
+                </div>
+                <div className="flex gap-3">
+                  <span className="text-blue-400 shrink-0 font-bold">□</span>
+                  <span className="text-white/80"><strong className="text-white">Check the Insights page</strong> — Study the <Link href="/insights" className="text-blue-400 underline">Pitcher Mix</Link> analysis. Our simulation says <span className="text-bsb-gold font-bold">7 SP + 2 RP</span> is the optimal pitching roster.</span>
                 </div>
               </div>
-            </Section>
+            </div>
+          </Section>
 
-            {/* During */}
-            <Section delay={200}>
-              <div className="rounded-2xl border border-bsb-accent/20 bg-bsb-accent/[0.03] p-6">
-                <h3 className="text-white font-bold text-lg mb-4 flex items-center gap-2">
-                  <span className="w-7 h-7 rounded-full bg-bsb-accent/20 text-bsb-accent flex items-center justify-center text-xs font-black">2</span>
-                  During the Draft
-                </h3>
-                <div className="space-y-3 text-sm">
-                  <div className="flex gap-3">
-                    <span className="text-bsb-accent shrink-0">→</span>
-                    <span className="text-white/80"><strong className="text-white">Select the category</strong> — Click the category button that&apos;s currently being drafted. The board auto-filters.</span>
+          {/* STEP 2: Template Selection */}
+          <Section delay={150}>
+            <div className="mt-4 rounded-2xl border border-bsb-gold/20 bg-bsb-gold/[0.03] p-6">
+              <h3 className="text-white font-bold text-lg mb-4 flex items-center gap-2">
+                <span className="w-8 h-8 rounded-full bg-bsb-gold text-bsb-navy flex items-center justify-center text-sm font-black">2</span>
+                Template Selection — The Most Important Decision
+              </h3>
+              <div className="space-y-3 text-sm">
+                <div className="flex gap-3">
+                  <span className="text-bsb-gold shrink-0">→</span>
+                  <span className="text-white/80">Templates are chosen before the draft starts. You&apos;re locked in once you pick — so choose wisely.</span>
+                </div>
+                <div className="flex gap-3">
+                  <span className="text-bsb-gold shrink-0">→</span>
+                  <span className="text-white/80"><strong className="text-white">Target balance</strong>. A template that&apos;s strong in both hitting AND pitching beats one that dominates just one side. In ranked scoring, excess points are wasted.</span>
+                </div>
+                <div className="flex gap-3">
+                  <span className="text-bsb-gold shrink-0">→</span>
+                  <span className="text-white/80"><strong className="text-white">Mini picks matter most</strong>. Mini Pitch and Mini Bat have 5-7× more FPTS impact than any Mega category. Templates with early Mini picks have a structural advantage.</span>
+                </div>
+                <div className="flex gap-3">
+                  <span className="text-bsb-gold shrink-0">→</span>
+                  <span className="text-white/80"><strong className="text-white">Late Mega picks can be good</strong>. In 2-round Mega categories (1B, 2B, 3B, SS, C), pick #16 gets two consecutive picks via snake reversal — often better than pick #1.</span>
+                </div>
+              </div>
+            </div>
+          </Section>
+
+          {/* STEP 3: Mini Draft */}
+          <Section delay={200}>
+            <div className="mt-4 rounded-2xl border border-purple-500/20 bg-purple-500/[0.03] p-6">
+              <h3 className="text-white font-bold text-lg mb-4 flex items-center gap-2">
+                <span className="w-8 h-8 rounded-full bg-purple-500 text-white flex items-center justify-center text-sm font-black">3</span>
+                Mini Draft — Your Foundation (8 picks)
+              </h3>
+              <div className="grid md:grid-cols-2 gap-4">
+                <div className="bg-white/[0.03] rounded-xl p-4">
+                  <div className="text-blue-400 text-xs font-bold uppercase mb-2">Mini Bat (4 rounds)</div>
+                  <div className="space-y-2 text-xs text-white/80">
+                    <p>→ Click <span className="px-1.5 py-0.5 bg-blue-500/20 text-blue-400 rounded text-[10px] font-bold">Bat</span> in the category selector</p>
+                    <p>→ Board filters to batters only, sorted by FPTS</p>
+                    <p>→ Watch for the <span className="text-bsb-gold font-bold">YOUR PICK!</span> indicator</p>
+                    <p>→ Use the <span className="text-bsb-gold">REC</span> badges — they factor in positional scarcity</p>
+                    <p>→ <strong className="text-white">Pro tip:</strong> Target positions where your Mega picks are weak</p>
                   </div>
-                  <div className="flex gap-3">
-                    <span className="text-bsb-accent shrink-0">→</span>
-                    <span className="text-white/80"><strong className="text-white">Someone else picks</strong> — Right-click the player and assign to their team. Keeps scarcity numbers accurate.</span>
-                  </div>
-                  <div className="flex gap-3">
-                    <span className="text-bsb-accent shrink-0">→</span>
-                    <span className="text-white/80"><strong className="text-white">Your pick</strong> — Look for the gold <span className="text-bsb-gold font-bold">&ldquo;YOUR PICK!&rdquo;</span> indicator and the <span className="text-bsb-gold">REC</span> badges. Click a row to draft.</span>
-                  </div>
-                  <div className="flex gap-3">
-                    <span className="text-bsb-accent shrink-0">→</span>
-                    <span className="text-white/80"><strong className="text-white">Track progress</strong> — Dashboard strip shows team total, category progress, and pick countdown.</span>
-                  </div>
-                  <div className="flex gap-3">
-                    <span className="text-bsb-accent shrink-0">→</span>
-                    <span className="text-white/80"><strong className="text-white">Check your roster</strong> — Right sidebar shows your full team + draft log.</span>
+                </div>
+                <div className="bg-white/[0.03] rounded-xl p-4">
+                  <div className="text-red-400 text-xs font-bold uppercase mb-2">Mini Pitch (4 rounds)</div>
+                  <div className="space-y-2 text-xs text-white/80">
+                    <p>→ Click <span className="px-1.5 py-0.5 bg-red-500/20 text-red-400 rounded text-[10px] font-bold">Pitch</span> in the category selector</p>
+                    <p>→ This is the <span className="text-bsb-gold font-bold">highest-impact category</span> (135 FPTS spread!)</p>
+                    <p>→ Prioritize high-IP starters — IP×3 scoring rewards workhorses</p>
+                    <p>→ Target SPs with high QS/W potential (4+10 bonus pts)</p>
+                    <p>→ <strong className="text-white">Pro tip:</strong> Draft 7 SP + 2 RP total across Mini + Mega</p>
                   </div>
                 </div>
               </div>
-            </Section>
-          </div>
+            </div>
+          </Section>
+
+          {/* STEP 4: Mega Draft */}
+          <Section delay={250}>
+            <div className="mt-4 rounded-2xl border border-bsb-accent/20 bg-bsb-accent/[0.03] p-6">
+              <h3 className="text-white font-bold text-lg mb-4 flex items-center gap-2">
+                <span className="w-8 h-8 rounded-full bg-bsb-accent text-white flex items-center justify-center text-sm font-black">4</span>
+                Mega Draft — Fill the Roster (22 picks)
+              </h3>
+              <div className="space-y-3 text-sm">
+                <div className="flex gap-3">
+                  <span className="text-bsb-accent shrink-0">→</span>
+                  <span className="text-white/80"><strong className="text-white">Switch categories as they&apos;re called</strong> — Click the active Mega category button. The board auto-filters to eligible players.</span>
+                </div>
+                <div className="flex gap-3">
+                  <span className="text-bsb-accent shrink-0">→</span>
+                  <span className="text-white/80"><strong className="text-white">Log every pick</strong> — When someone else drafts, right-click the player and assign to their team. This keeps PANA and scarcity numbers accurate.</span>
+                </div>
+                <div className="flex gap-3">
+                  <span className="text-bsb-accent shrink-0">→</span>
+                  <span className="text-white/80"><strong className="text-white">Watch the pick countdown</strong> — The dashboard strip shows &ldquo;YOU PICK IN 3&rdquo; or pulses <span className="text-bsb-gold font-bold">&ldquo;YOUR PICK!&rdquo;</span> when it&apos;s your turn.</span>
+                </div>
+                <div className="flex gap-3">
+                  <span className="text-bsb-accent shrink-0">→</span>
+                  <span className="text-white/80"><strong className="text-white">Trust PANA over VORP in later rounds</strong> — VORP is static. PANA updates live as players are taken. A spiking PANA means a cliff is coming.</span>
+                </div>
+              </div>
+              <div className="mt-4 bg-white/[0.04] rounded-xl p-4">
+                <div className="text-[10px] text-bsb-dim uppercase tracking-wider mb-2 font-bold">Category Priority Guide</div>
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <div><span className="text-red-400 font-bold">Mega Pitch</span> <span className="text-bsb-dim">(6 rds)</span> — Pick position barely matters. Draft best available SP/RP.</div>
+                  <div><span className="text-blue-400 font-bold">Mega OF</span> <span className="text-bsb-dim">(4 rds)</span> — Deep position. Don&apos;t panic, plenty of value.</div>
+                  <div><span className="text-green-400 font-bold">Mega C</span> <span className="text-bsb-dim">(2 rds)</span> — Scarcest position! Early picks have a big edge here.</div>
+                  <div><span className="text-green-400 font-bold">Mega 2B/1B</span> <span className="text-bsb-dim">(2 rds)</span> — Late picks often beat early ones (snake reversal).</div>
+                  <div><span className="text-cyan-400 font-bold">Mega 3B/SS</span> <span className="text-bsb-dim">(2 rds)</span> — Moderate scarcity. Same snake reversal advantage.</div>
+                  <div><span className="text-white/40 font-bold">Mega Any</span> <span className="text-bsb-dim">(2 rds)</span> — Negligible spread. Fill your biggest remaining need.</div>
+                </div>
+              </div>
+            </div>
+          </Section>
+
+          {/* STEP 5: Live Draft Decisions */}
+          <Section delay={300}>
+            <div className="mt-4 rounded-2xl border border-green-500/20 bg-green-500/[0.03] p-6">
+              <h3 className="text-white font-bold text-lg mb-4 flex items-center gap-2">
+                <span className="w-8 h-8 rounded-full bg-green-500 text-white flex items-center justify-center text-sm font-black">5</span>
+                Decision Framework — When It&apos;s Your Pick
+              </h3>
+              <div className="space-y-4">
+                <div className="bg-white/[0.04] rounded-xl p-4 border-l-4 border-bsb-gold">
+                  <div className="text-bsb-gold text-xs font-bold uppercase mb-1">Step A: Check the REC badges</div>
+                  <p className="text-white/80 text-xs">The app shows up to 3 recommended players. These balance VORP (40%), PANA (35%), and raw FPTS (25%). When in doubt, take the top REC.</p>
+                </div>
+                <div className="bg-white/[0.04] rounded-xl p-4 border-l-4 border-red-400">
+                  <div className="text-red-400 text-xs font-bold uppercase mb-1">Step B: Check for PANA spikes</div>
+                  <p className="text-white/80 text-xs">If a player has PANA +20 or more, there&apos;s a massive cliff after them. Grab them now — waiting means a huge downgrade at that position.</p>
+                </div>
+                <div className="bg-white/[0.04] rounded-xl p-4 border-l-4 border-blue-400">
+                  <div className="text-blue-400 text-xs font-bold uppercase mb-1">Step C: Open the player card</div>
+                  <p className="text-white/80 text-xs">Click the player&apos;s name to see injury flags, consistency grade, age curve, BSB projection vs Steamer, and 3-year history. Avoid <span className="text-red-400 font-bold">SEVERE</span> injury risks unless the upside is huge.</p>
+                </div>
+                <div className="bg-white/[0.04] rounded-xl p-4 border-l-4 border-green-400">
+                  <div className="text-green-400 text-xs font-bold uppercase mb-1">Step D: Glance at left sidebar scarcity</div>
+                  <p className="text-white/80 text-xs">The scarcity bars show how much value is left at each position. Tall bar = urgency. If a position is running low and you haven&apos;t filled it, prioritize it even if FPTS isn&apos;t the highest.</p>
+                </div>
+              </div>
+            </div>
+          </Section>
 
           {/* Controls */}
-          <Section delay={300}>
-            <div className="mt-6 rounded-2xl border border-white/[0.06] bg-white/[0.02] p-6">
-              <h3 className="text-white font-bold text-lg mb-4">⌨️ Quick Controls</h3>
+          <Section delay={350}>
+            <div className="mt-4 rounded-2xl border border-white/[0.06] bg-white/[0.02] p-6">
+              <h3 className="text-white font-bold text-lg mb-4">⌨️ Quick Controls Reference</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div className="flex items-center gap-3 text-sm">
                   <span className="text-bsb-dim">Click player&apos;s name</span>
@@ -563,6 +831,37 @@ export default function GuidePage() {
                   <span className="flex-1 border-b border-dashed border-white/10"></span>
                   <span className="text-white font-semibold">Clear search / close modals</span>
                 </div>
+                <div className="flex items-center gap-3 text-sm">
+                  <span className="text-bsb-dim">Hide Drafted button</span>
+                  <span className="flex-1 border-b border-dashed border-white/10"></span>
+                  <span className="text-white font-semibold">Show only available players</span>
+                </div>
+              </div>
+            </div>
+          </Section>
+
+          {/* Quick Strategy Cards */}
+          <Section delay={400}>
+            <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-3">
+              <div className="rounded-xl bg-blue-500/[0.06] border border-blue-500/20 p-4 text-center">
+                <div className="text-blue-400 text-2xl mb-1">🛡️</div>
+                <div className="text-white text-xs font-bold mb-1">Hitting = Floor</div>
+                <p className="text-bsb-dim text-[10px]">Consistent weekly points. Build your foundation here first.</p>
+              </div>
+              <div className="rounded-xl bg-red-500/[0.06] border border-red-500/20 p-4 text-center">
+                <div className="text-red-400 text-2xl mb-1">🚀</div>
+                <div className="text-white text-xs font-bold mb-1">Pitching = Ceiling</div>
+                <p className="text-bsb-dim text-[10px]">High variance, huge upside on 2-start weeks. Your boom source.</p>
+              </div>
+              <div className="rounded-xl bg-green-500/[0.06] border border-green-500/20 p-4 text-center">
+                <div className="text-green-400 text-2xl mb-1">⚖️</div>
+                <div className="text-white text-xs font-bold mb-1">Balance Wins</div>
+                <p className="text-bsb-dim text-[10px]">Strong both sides &gt; dominant one side. Excess points are wasted.</p>
+              </div>
+              <div className="rounded-xl bg-bsb-gold/[0.06] border border-bsb-gold/20 p-4 text-center">
+                <div className="text-bsb-gold text-2xl mb-1">📉</div>
+                <div className="text-white text-xs font-bold mb-1">Watch the Cliff</div>
+                <p className="text-bsb-dim text-[10px]">PANA spikes mean a position is about to dry up. Don&apos;t get caught.</p>
               </div>
             </div>
           </Section>
