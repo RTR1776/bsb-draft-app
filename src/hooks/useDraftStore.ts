@@ -80,6 +80,7 @@ export type DraftState = {
 }
 
 const STORAGE_KEY = 'bsb-draft-state'
+const TEAM_KEY = 'bsb-my-team'
 
 export function useDraftStore() {
   const [batters, setBatters] = useState<Player[]>(() =>
@@ -103,6 +104,20 @@ export function useDraftStore() {
     draftLog: [],
     categoryPicks: {},
   })
+
+  // My team identity — persisted separately so it survives draft resets
+  const [myTeamNumber, setMyTeamNumberState] = useState<number | null>(() => {
+    if (typeof window === 'undefined') return null
+    try {
+      const saved = localStorage.getItem(TEAM_KEY)
+      return saved !== null ? Number(saved) : null
+    } catch { return null }
+  })
+
+  const setMyTeamNumber = useCallback((num: number) => {
+    setMyTeamNumberState(num)
+    try { localStorage.setItem(TEAM_KEY, String(num)) } catch {}
+  }, [])
 
   const templates = templatesData as Record<string, Record<string, number>>
   const analysis = analysisData as any
@@ -359,7 +374,8 @@ export function useDraftStore() {
 
   // My team strength by position
   const getMyTeamStrength = useCallback((): Record<string, { players: Player[]; totalFpts: number; grade: string }> => {
-    const myPlayers = allPlayers.filter(p => p.drafted && p.draftedBy === 0)
+    const myNum = myTeamNumber ?? 0
+    const myPlayers = allPlayers.filter(p => p.drafted && p.draftedBy === myNum)
     const positions: Record<string, Player[]> = {
       C: [], '1B': [], '2B': [], '3B': [], SS: [], OF: [], SP: [], RP: [],
     }
@@ -385,7 +401,7 @@ export function useDraftStore() {
       result[pos] = { players, totalFpts: total, grade }
     }
     return result
-  }, [allPlayers])
+  }, [allPlayers, myTeamNumber])
 
   return {
     batters,
@@ -396,6 +412,8 @@ export function useDraftStore() {
     analysis,
     categories,
     draftedCount,
+    myTeamNumber,
+    setMyTeamNumber,
     draftPlayer,
     undraftPlayer,
     setMyTemplate,

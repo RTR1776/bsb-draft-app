@@ -14,6 +14,7 @@ import { DashboardStrip } from '@/components/DashboardStrip'
 import { TeamContextMenu } from '@/components/TeamContextMenu'
 import { ScarcityBar } from '@/components/ScarcityBar'
 import { MyTeamPositionGrid, AllTeamsPanel } from '@/components/TeamPanels'
+import { TeamSelector } from '@/components/TeamSelector'
 import { useNewsStore } from '@/hooks/useNewsStore'
 import { NewsFeed } from '@/components/NewsFeed'
 
@@ -94,10 +95,13 @@ export default function Home() {
   const { scarcity, remaining } = store.getLiveScarcity()
   const maxScarcity = Math.max(...Object.values(scarcity), 1)
 
+  // My team number (null = needs to select)
+  const myNum = store.myTeamNumber
+
   // My team
   const myTeamPlayers = useMemo(() =>
-    store.allPlayers.filter(p => p.drafted && p.draftedBy === 0),
-    [store.allPlayers]
+    store.allPlayers.filter(p => p.drafted && p.draftedBy === myNum),
+    [store.allPlayers, myNum]
   )
   const myTeamTotal = useMemo(() =>
     myTeamPlayers.reduce((s, p) => s + p.fpts, 0),
@@ -150,12 +154,18 @@ export default function Home() {
 
   return (
     <div className="h-screen flex flex-col overflow-hidden">
+      {/* Team Selector — shown on first visit */}
+      {myNum === null && (
+        <TeamSelector onSelect={store.setMyTeamNumber} />
+      )}
+
       {/* Context Menu */}
       {contextMenu && (
         <TeamContextMenu
           x={contextMenu.x} y={contextMenu.y}
           playerId={contextMenu.playerId} playerName={contextMenu.playerName}
           onDraft={store.draftPlayer} onClose={() => setContextMenu(null)}
+          myTeamNumber={myNum}
         />
       )}
 
@@ -165,7 +175,7 @@ export default function Home() {
           player={cardPlayer}
           pana={panaMap[cardPlayer.id] || store.getPANA(cardPlayer)}
           onClose={() => setCardPlayer(null)}
-          onDraft={(id) => store.draftPlayer(id, 0)}
+          onDraft={(id) => store.draftPlayer(id, myNum ?? 0)}
           allPlayers={store.allPlayers}
           playerNews={newsStore.newsForPlayer(cardPlayer.id)}
         />
@@ -178,6 +188,20 @@ export default function Home() {
             BSB<span className="text-bsb-accent">DRAFT</span>
           </h1>
           <span className="text-xs text-bsb-dim">{store.draftedCount} drafted</span>
+          {myNum !== null && (
+            <button
+              onClick={() => {
+                const newTeam = prompt('Switch team? Enter team number (0-15):')
+                if (newTeam !== null && !isNaN(Number(newTeam)) && Number(newTeam) >= 0 && Number(newTeam) <= 15) {
+                  store.setMyTeamNumber(Number(newTeam))
+                }
+              }}
+              className={`px-1.5 py-0.5 rounded text-[10px] font-bold border border-white/10 hover:border-white/30 transition-all ${teamColor(myNum)}`}
+              title="Click to switch team"
+            >
+              ⚾ {TEAM_NAMES[myNum]}
+            </button>
+          )}
           {store.draftState.myTemplate && (
             <span className="px-1.5 py-0.5 bg-bsb-gold/20 rounded text-[10px] text-bsb-gold font-bold">
               TPL {store.draftState.myTemplate}
@@ -411,7 +435,7 @@ export default function Home() {
             {displayPlayers.map((player, i) => (
               <PlayerRow
                 key={player.id} player={player} rank={i + 1}
-                onDraft={(id) => store.draftPlayer(id, 0)}
+                onDraft={(id) => store.draftPlayer(id, myNum ?? 0)}
                 onUndraft={(id) => store.undraftPlayer(id)}
                 onRightClick={handleRightClick}
                 onNameClick={(p) => setCardPlayer(p)}
@@ -422,6 +446,7 @@ export default function Home() {
                 prevTier={i > 0 ? displayPlayers[i - 1].tier : undefined}
                 hasNews={newsStore.hasNewsForPlayer(player.id)}
                 newsSeverity={newsStore.topSeverityForPlayer(player.id)}
+                myTeamNumber={myNum}
               />
             ))}
             {displayPlayers.length === 0 && (
@@ -435,7 +460,7 @@ export default function Home() {
           {showHints ? (
             <div className="px-3 py-1 bg-bsb-dark/80 border-t border-white/5 text-[10px] text-bsb-dim flex items-center gap-4">
               <span><kbd className="px-1 bg-white/10 rounded">Click name</kbd> = player card</span>
-              <span><kbd className="px-1 bg-white/10 rounded">Click row</kbd> = draft to {TEAM_NAMES[0]}</span>
+              <span><kbd className="px-1 bg-white/10 rounded">Click row</kbd> = draft to {TEAM_NAMES[myNum ?? 0]}</span>
               <span><kbd className="px-1 bg-white/10 rounded">Right-click</kbd> = assign to team</span>
               <span><kbd className="px-1 bg-white/10 rounded">/</kbd> = search</span>
               <span className="hidden lg:inline ml-auto">
@@ -465,7 +490,7 @@ export default function Home() {
                   ? 'text-bsb-gold border-b-2 border-bsb-gold'
                   : 'text-bsb-dim hover:text-white'
               }`}
-            >{TEAM_NAMES[0]} ({myTeamPlayers.length})</button>
+            >{TEAM_NAMES[myNum ?? 0]} ({myTeamPlayers.length})</button>
             <button
               onClick={() => setRightPanel('allteams')}
               className={`flex-1 px-3 py-2 text-xs font-bold uppercase tracking-wider transition-all ${
@@ -520,7 +545,7 @@ export default function Home() {
                         </span>
                         <span className="truncate flex-1 text-white/80">{player?.name || log.player}</span>
                         <span className={`text-[10px] font-bold shrink-0 ${teamColor(log.team)}`}>
-                          {log.team === 0 ? 'ME' : teamAbbrev(log.team)}
+                          {log.team === myNum ? 'ME' : teamAbbrev(log.team)}
                         </span>
                       </div>
                     )

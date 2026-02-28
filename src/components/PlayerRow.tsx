@@ -4,7 +4,7 @@ import { PosBadge } from './PosBadge'
 import { GRID_COLS, tierRowBg, teamAbbrev } from './constants'
 
 export function PlayerRow({
-  player, rank, onDraft, onUndraft, onRightClick, onNameClick, showRole, isRecommended, recRank, pana, prevTier, hasNews, newsSeverity
+  player, rank, onDraft, onUndraft, onRightClick, onNameClick, showRole, isRecommended, recRank, pana, prevTier, hasNews, newsSeverity, myTeamNumber
 }: {
   player: Player; rank: number
   onDraft: (id: string) => void
@@ -18,7 +18,9 @@ export function PlayerRow({
   prevTier?: number
   hasNews?: boolean
   newsSeverity?: 'high' | 'medium' | 'low'
+  myTeamNumber?: number | null
 }) {
+  const myNum = myTeamNumber ?? 0
   const isPitcher = player.pos === 'P'
 
   // VORP color
@@ -135,11 +137,11 @@ export function PlayerRow({
       <span className="flex justify-end">
         {player.drafted && player.draftedBy !== undefined && (
           <span className={`text-[10px] px-1.5 rounded font-bold ${
-            player.draftedBy === 0
+            player.draftedBy === myNum
               ? 'bg-bsb-gold/20 text-bsb-gold'
               : 'bg-bsb-accent/20 text-bsb-accent'
           }`}>
-            {player.draftedBy === 0 ? 'ME' : teamAbbrev(player.draftedBy)}
+            {player.draftedBy === myNum ? 'ME' : teamAbbrev(player.draftedBy)}
           </span>
         )}
       </span>

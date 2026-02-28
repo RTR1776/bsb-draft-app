@@ -3,11 +3,13 @@ import { useRef, useEffect } from 'react'
 import { TEAM_NAMES, teamColor } from './constants'
 
 export function TeamContextMenu({
-  x, y, playerId, playerName, onDraft, onClose
+  x, y, playerId, playerName, onDraft, onClose, myTeamNumber
 }: {
   x: number; y: number; playerId: string; playerName: string
   onDraft: (id: string, team: number) => void; onClose: () => void
+  myTeamNumber?: number | null
 }) {
+  const myNum = myTeamNumber ?? 0
   const menuRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -40,15 +42,15 @@ export function TeamContextMenu({
         Draft {playerName}
       </div>
       <button
-        onClick={() => { onDraft(playerId, 0); onClose() }}
-        className="w-full px-3 py-1.5 text-left text-sm hover:bg-bsb-accent/20 text-bsb-gold font-bold flex items-center gap-2"
+        onClick={() => { onDraft(playerId, myNum); onClose() }}
+        className={`w-full px-3 py-1.5 text-left text-sm hover:bg-bsb-accent/20 font-bold flex items-center gap-2 ${teamColor(myNum)}`}
       >
-        <span className="w-2 h-2 rounded-full bg-bsb-gold"></span>
-        {TEAM_NAMES[0]} (Me)
+        <span className="w-2 h-2 rounded-full bg-current"></span>
+        {TEAM_NAMES[myNum]} (Me)
       </button>
       <div className="border-t border-white/10 my-0.5" />
       <div className="max-h-[380px] overflow-y-auto">
-        {Array.from({ length: 16 }, (_, i) => i + 1).map(num => (
+        {Array.from({ length: 16 }, (_, i) => i).filter(n => n !== myNum).map(num => (
           <button
             key={num}
             onClick={() => { onDraft(playerId, num); onClose() }}
