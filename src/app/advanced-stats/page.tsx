@@ -21,17 +21,17 @@ type PitcherYearStats = {
   barrel_against: number; hard_hit_against: number;
   gb_pct: number; chase_rate: number;
 }
-type BatterEntry = { id: string; name: string; team: string; pos: string; age: number; fpts: number; '2022': BatterYearStats | null; '2023': BatterYearStats | null; '2024': BatterYearStats | null }
-type PitcherEntry = { id: string; name: string; team: string; role: string; age: number; fpts: number; '2022': PitcherYearStats | null; '2023': PitcherYearStats | null; '2024': PitcherYearStats | null }
-type BatterFlat = BatterYearStats & { id: string; name: string; team: string; pos: string; age: number; fpts: number; has2022: boolean; has2023: boolean; has2024: boolean }
-type PitcherFlat = PitcherYearStats & { id: string; name: string; team: string; role: string; age: number; fpts: number; has2022: boolean; has2023: boolean; has2024: boolean }
+type BatterEntry = { id: string; name: string; team: string; pos: string; age: number; fpts: number; '2022': BatterYearStats | null; '2023': BatterYearStats | null; '2024': BatterYearStats | null; '2025': BatterYearStats | null }
+type PitcherEntry = { id: string; name: string; team: string; role: string; age: number; fpts: number; '2022': PitcherYearStats | null; '2023': PitcherYearStats | null; '2024': PitcherYearStats | null; '2025': PitcherYearStats | null }
+type BatterFlat = BatterYearStats & { id: string; name: string; team: string; pos: string; age: number; fpts: number; has2022: boolean; has2023: boolean; has2024: boolean; has2025: boolean }
+type PitcherFlat = PitcherYearStats & { id: string; name: string; team: string; role: string; age: number; fpts: number; has2022: boolean; has2023: boolean; has2024: boolean; has2025: boolean }
 type AnalysisEntry = { valuation: string; age_phase: string; value_tag: string; breakout: boolean; type: string }
 type SortDir = 'asc' | 'desc'
 type PlayerType = 'batters' | 'pitchers'
 type SubTab = 'stats' | 'analysis'
-type StatYear = '2022' | '2023' | '2024'
+type StatYear = '2022' | '2023' | '2024' | '2025'
 
-const YEARS: StatYear[] = ['2022', '2023', '2024']
+const YEARS: StatYear[] = ['2022', '2023', '2024', '2025']
 
 // Flatten multi-year data for a given year
 function flattenBatters(year: StatYear): BatterFlat[] {
@@ -40,7 +40,7 @@ function flattenBatters(year: StatYear): BatterFlat[] {
     .map(b => ({
       ...b[year]!,
       id: b.id, name: b.name, team: b.team, pos: b.pos, age: b.age, fpts: b.fpts,
-      has2022: b['2022'] != null, has2023: b['2023'] != null, has2024: b['2024'] != null,
+      has2022: b['2022'] != null, has2023: b['2023'] != null, has2024: b['2024'] != null, has2025: b['2025'] != null,
     }))
 }
 
@@ -50,7 +50,7 @@ function flattenPitchers(year: StatYear): PitcherFlat[] {
     .map(p => ({
       ...p[year]!,
       id: p.id, name: p.name, team: p.team, role: p.role, age: p.age, fpts: p.fpts,
-      has2022: p['2022'] != null, has2023: p['2023'] != null, has2024: p['2024'] != null,
+      has2022: p['2022'] != null, has2023: p['2023'] != null, has2024: p['2024'] != null, has2025: p['2025'] != null,
     }))
 }
 
@@ -390,7 +390,7 @@ export default function AdvancedStatsPage() {
   const [showGlossary, setShowGlossary] = useState(false)
   const [analysisFilter, setAnalysisFilter] = useState<string>('all')
   const [expandedPlayer, setExpandedPlayer] = useState<string | null>(null)
-  const [statYear, setStatYear] = useState<StatYear>('2024')
+  const [statYear, setStatYear] = useState<StatYear>('2025')
   const searchRef = useRef<HTMLInputElement>(null)
 
   // Keyboard shortcuts
@@ -461,7 +461,7 @@ export default function AdvancedStatsPage() {
   // Analysis data (always uses 2024)
   const analysisPlayers = useMemo(() => {
     const isB = playerType === 'batters'
-    const items = isB ? flattenBatters('2024') : flattenPitchers('2024')
+    const items = isB ? flattenBatters('2025') : flattenPitchers('2025')
     let filtered = items.map(p => ({
       ...p,
       analysis: analyses[p.id],
