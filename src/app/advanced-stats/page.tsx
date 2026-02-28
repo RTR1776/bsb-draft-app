@@ -7,12 +7,69 @@ import battersData from '@/data/batters.json'
 import pitchersData from '@/data/pitchers.json'
 
 // ─── Types ──────────────────────────────────────────
-type BatterAdv = typeof advancedData.batters[number]
-type PitcherAdv = typeof advancedData.pitchers[number]
+type BatterYearStats = {
+  exit_velo: number; barrel_pct: number; hard_hit_pct: number;
+  launch_angle: number; xba: number; xslg: number;
+  sprint_speed: number; k_pct: number; bb_pct: number;
+  wrc_plus: number; babip: number; whiff_pct: number; chase_rate: number;
+}
+type PitcherYearStats = {
+  fb_velo: number; spin_rate: number; whiff_pct: number;
+  k_pct: number; bb_pct: number; csw_pct: number;
+  stuff_plus: number; location_plus: number;
+  xera: number; fip: number;
+  barrel_against: number; hard_hit_against: number;
+  gb_pct: number; chase_rate: number;
+}
+type BatterEntry = { id: string; name: string; team: string; pos: string; age: number; fpts: number; '2022': BatterYearStats | null; '2023': BatterYearStats | null; '2024': BatterYearStats | null }
+type PitcherEntry = { id: string; name: string; team: string; role: string; age: number; fpts: number; '2022': PitcherYearStats | null; '2023': PitcherYearStats | null; '2024': PitcherYearStats | null }
+type BatterFlat = BatterYearStats & { id: string; name: string; team: string; pos: string; age: number; fpts: number; has2022: boolean; has2023: boolean; has2024: boolean }
+type PitcherFlat = PitcherYearStats & { id: string; name: string; team: string; role: string; age: number; fpts: number; has2022: boolean; has2023: boolean; has2024: boolean }
 type AnalysisEntry = { valuation: string; age_phase: string; value_tag: string; breakout: boolean; type: string }
 type SortDir = 'asc' | 'desc'
 type PlayerType = 'batters' | 'pitchers'
 type SubTab = 'stats' | 'analysis'
+type StatYear = '2022' | '2023' | '2024'
+
+const YEARS: StatYear[] = ['2022', '2023', '2024']
+
+// Flatten multi-year data for a given year
+function flattenBatters(year: StatYear): BatterFlat[] {
+  return (advancedData.batters as BatterEntry[])
+    .filter(b => b[year] != null)
+    .map(b => ({
+      ...b[year]!,
+      id: b.id, name: b.name, team: b.team, pos: b.pos, age: b.age, fpts: b.fpts,
+      has2022: b['2022'] != null, has2023: b['2023'] != null, has2024: b['2024'] != null,
+    }))
+}
+
+function flattenPitchers(year: StatYear): PitcherFlat[] {
+  return (advancedData.pitchers as PitcherEntry[])
+    .filter(p => p[year] != null)
+    .map(p => ({
+      ...p[year]!,
+      id: p.id, name: p.name, team: p.team, role: p.role, age: p.age, fpts: p.fpts,
+      has2022: p['2022'] != null, has2023: p['2023'] != null, has2024: p['2024'] != null,
+    }))
+}
+
+// Get trend arrow for a stat across years
+function getTrend(entry: BatterEntry | PitcherEntry, stat: string, invert = false): string {
+  const vals: number[] = []
+  for (const yr of YEARS) {
+    const d = (entry as any)[yr]
+    if (d && d[stat] != null) vals.push(d[stat])
+  }
+  if (vals.length < 2) return ''
+  const last = vals[vals.length - 1]
+  const prev = vals[vals.length - 2]
+  const diff = last - prev
+  const threshold = Math.abs(prev) * 0.03 // 3% change threshold
+  if (Math.abs(diff) < threshold) return ''
+  const improving = invert ? diff < -threshold : diff > threshold
+  return improving ? '↑' : '↓'
+}
 
 const analyses = analysesData as Record<string, AnalysisEntry>
 
@@ -87,7 +144,7 @@ function StatBar({ value, max, color = 'bg-bsb-accent' }: { value: number; max: 
 }
 
 // ─── Generate analysis text ─────────────────────────
-function generateBatterAnalysis(b: BatterAdv, core: any, a: AnalysisEntry): string {
+function generateBatterAnalysis(b: BatterFlat, core: any, a: AnalysisEntry): string {
   const hist = core.histFpts || {}
   const histVals = Object.entries(hist).sort(([a],[b]) => a.localeCompare(b))
   const trendText = histVals.length >= 2
@@ -109,8 +166,8 @@ function generateBatterAnalysis(b: BatterAdv, core: any, a: AnalysisEntry): stri
     parts.push(`${b.name} is an offensive force with a ${b.wrc_plus} wRC+, meaning he produces ${b.wrc_plus - 100}% more run value than the average hitter.`)
   } else if (b.bb_pct >= 12 && b.k_pct <= 18) {
     parts.push(`${b.name} has an elite plate approach with a ${b.bb_pct}% walk rate against just a ${b.k_pct}% strikeout rate — a rare discipline combo.`)
-  } else if (b.contact_pct >= 88) {
-    parts.push(`${b.name} is a contact wizard at ${b.contact_pct}% contact rate, rarely giving away at-bats and consistently putting the ball in play.`)
+  } else if (b.whiff_pct <= 15) {
+    parts.push(`${b.name} is a contact wizard with just ${b.whiff_pct}% whiff rate, rarely giving away at-bats and consistently putting the ball in play.`)
   } else {
     parts.push(`${b.name} projects for ${core.fpts} FPTS this season as a ${core.pos} for ${core.team}.`)
   }
@@ -160,7 +217,7 @@ function generateBatterAnalysis(b: BatterAdv, core: any, a: AnalysisEntry): stri
   return parts.join(' ')
 }
 
-function generatePitcherAnalysis(p: PitcherAdv, core: any, a: AnalysisEntry): string {
+function generatePitcherAnalysis(p: PitcherFlat, core: any, a: AnalysisEntry): string {
   const hist = core.histFpts || {}
   const histVals = Object.entries(hist).sort(([a],[b]) => a.localeCompare(b))
   const trendText = histVals.length >= 2
@@ -260,15 +317,12 @@ const BATTER_COLS = [
   { key: 'xba', label: 'xBA', width: 'w-14', align: 'text-right' as const },
   { key: 'xslg', label: 'xSLG', width: 'w-14', align: 'text-right' as const },
   { key: 'babip', label: 'BABIP', width: 'w-14', align: 'text-right' as const },
-  { key: 'iso', label: 'ISO', width: 'w-14', align: 'text-right' as const },
   { key: 'k_pct', label: 'K%', width: 'w-12', align: 'text-right' as const },
   { key: 'bb_pct', label: 'BB%', width: 'w-12', align: 'text-right' as const },
   { key: 'wrc_plus', label: 'wRC+', width: 'w-12', align: 'text-right' as const },
   { key: 'sprint_speed', label: 'Spd', width: 'w-12', align: 'text-right' as const },
-  { key: 'contact_pct', label: 'Cnt%', width: 'w-12', align: 'text-right' as const },
-  { key: 'o_swing_pct', label: 'O-Sw%', width: 'w-12', align: 'text-right' as const },
-  { key: 'gb_pct', label: 'GB%', width: 'w-12', align: 'text-right' as const },
-  { key: 'fb_pct', label: 'FB%', width: 'w-12', align: 'text-right' as const },
+  { key: 'whiff_pct', label: 'Whiff%', width: 'w-12', align: 'text-right' as const },
+  { key: 'chase_rate', label: 'Chase%', width: 'w-12', align: 'text-right' as const },
 ]
 
 const PITCHER_COLS = [
@@ -283,20 +337,14 @@ const PITCHER_COLS = [
   { key: 'k_pct', label: 'K%', width: 'w-12', align: 'text-right' as const },
   { key: 'bb_pct', label: 'BB%', width: 'w-12', align: 'text-right' as const },
   { key: 'csw_pct', label: 'CSW%', width: 'w-12', align: 'text-right' as const },
-  { key: 'swstr_pct', label: 'SwStr%', width: 'w-12', align: 'text-right' as const },
   { key: 'stuff_plus', label: 'Stuff+', width: 'w-14', align: 'text-right' as const },
   { key: 'location_plus', label: 'Loc+', width: 'w-12', align: 'text-right' as const },
   { key: 'xera', label: 'xERA', width: 'w-12', align: 'text-right' as const },
   { key: 'fip', label: 'FIP', width: 'w-12', align: 'text-right' as const },
-  { key: 'xfip', label: 'xFIP', width: 'w-12', align: 'text-right' as const },
-  { key: 'siera', label: 'SIERA', width: 'w-12', align: 'text-right' as const },
   { key: 'hard_hit_against', label: 'HH%A', width: 'w-12', align: 'text-right' as const },
   { key: 'barrel_against', label: 'Brl%A', width: 'w-12', align: 'text-right' as const },
   { key: 'gb_pct', label: 'GB%', width: 'w-12', align: 'text-right' as const },
-  { key: 'babip_against', label: 'BABIP', width: 'w-14', align: 'text-right' as const },
-  { key: 'lob_pct', label: 'LOB%', width: 'w-12', align: 'text-right' as const },
-  { key: 'hr_per_9', label: 'HR/9', width: 'w-12', align: 'text-right' as const },
-  { key: 'o_swing_pct', label: 'O-Sw%', width: 'w-12', align: 'text-right' as const },
+  { key: 'chase_rate', label: 'Chase%', width: 'w-12', align: 'text-right' as const },
 ]
 
 // ─── Position filter options ────────────────────────
@@ -317,25 +365,18 @@ const GLOSSARY: Record<string, string> = {
   'BB%': 'Walk Rate — walks per plate appearance',
   'wRC+': 'Weighted Runs Created Plus — overall offense, 100 is average, 150 = 50% better than avg',
   'Spd': 'Sprint Speed — feet per second, 27 ft/s is average, 30+ is elite',
-  'Cnt%': 'Contact Rate — % of swings making contact',
-  'O-Sw%': 'Chase Rate — % of pitches outside the zone that the batter swings at (lower is better for hitters)',
+  'Whiff%': 'Whiff Rate — % of swings that miss entirely (batter or pitcher context)',
+  'Chase%': 'Chase Rate — % of pitches outside the zone swung at (lower is better for hitters, higher for pitchers)',
   'GB%': 'Ground Ball Rate — % of batted balls on the ground',
-  'FB%': 'Fly Ball Rate — % of batted balls in the air',
   'Velo': 'Fastball Velocity — average fastball speed (mph)',
   'Spin': 'Spin Rate — average fastball RPM, more spin = more movement',
-  'Whiff%': 'Whiff Rate — % of swings that miss entirely',
   'CSW%': 'Called Strikes + Whiffs — % of total pitches that are called strikes or whiffs',
-  'SwStr%': 'Swinging Strike Rate — % of all pitches that result in swinging strikes',
   'Stuff+': 'Stuff Plus — pitch quality metric, 100 is average, higher is better',
   'Loc+': 'Location Plus — command quality metric, 100 is average, higher is better',
   'xERA': 'Expected ERA — ERA based on quality of contact allowed, removes luck/defense',
   'FIP': 'Fielding Independent Pitching — ERA based only on K, BB, HR (things pitcher controls)',
-  'xFIP': 'Expected FIP — FIP with normalized HR/FB rate',
-  'SIERA': 'Skill-Interactive ERA — advanced ERA estimator using K%, BB%, GB%',
   'HH%A': 'Hard Hit Rate Against — % of batted balls with 95+ mph EV allowed',
   'Brl%A': 'Barrel Rate Against — % of barrels allowed',
-  'LOB%': 'Left on Base % — % of baserunners who don\'t score, extreme values regress to ~72%',
-  'HR/9': 'Home Runs per 9 Innings — rate of HR allowed',
 }
 
 // ─── Main Page Component ────────────────────────────
@@ -349,6 +390,7 @@ export default function AdvancedStatsPage() {
   const [showGlossary, setShowGlossary] = useState(false)
   const [analysisFilter, setAnalysisFilter] = useState<string>('all')
   const [expandedPlayer, setExpandedPlayer] = useState<string | null>(null)
+  const [statYear, setStatYear] = useState<StatYear>('2024')
   const searchRef = useRef<HTMLInputElement>(null)
 
   // Keyboard shortcuts
@@ -381,7 +423,7 @@ export default function AdvancedStatsPage() {
 
   // Filtered and sorted data
   const battersSorted = useMemo(() => {
-    let data = [...advancedData.batters]
+    let data = flattenBatters(statYear)
     if (search) {
       const q = search.toLowerCase()
       data = data.filter(b => b.name.toLowerCase().includes(q) || b.team.toLowerCase().includes(q))
@@ -396,10 +438,10 @@ export default function AdvancedStatsPage() {
       return sortDir === 'asc' ? av - bv : bv - av
     })
     return data
-  }, [search, posFilter, sortKey, sortDir])
+  }, [search, posFilter, sortKey, sortDir, statYear])
 
   const pitchersSorted = useMemo(() => {
-    let data = [...advancedData.pitchers]
+    let data = flattenPitchers(statYear)
     if (search) {
       const q = search.toLowerCase()
       data = data.filter(p => p.name.toLowerCase().includes(q) || p.team.toLowerCase().includes(q))
@@ -414,12 +456,12 @@ export default function AdvancedStatsPage() {
       return sortDir === 'asc' ? av - bv : bv - av
     })
     return data
-  }, [search, posFilter, sortKey, sortDir])
+  }, [search, posFilter, sortKey, sortDir, statYear])
 
-  // Analysis data
+  // Analysis data (always uses 2024)
   const analysisPlayers = useMemo(() => {
     const isB = playerType === 'batters'
-    const items = isB ? advancedData.batters : advancedData.pitchers
+    const items = isB ? flattenBatters('2024') : flattenPitchers('2024')
     let filtered = items.map(p => ({
       ...p,
       analysis: analyses[p.id],
@@ -531,6 +573,20 @@ export default function AdvancedStatsPage() {
                   }`}
                 >Pitchers</button>
               </div>
+
+              {/* Year selector */}
+              {subTab === 'stats' && (
+                <div className="flex bg-white/[0.04] rounded-lg p-0.5 border border-white/[0.06]">
+                  {YEARS.map(yr => (
+                    <button key={yr}
+                      onClick={() => setStatYear(yr)}
+                      className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all ${
+                        statYear === yr ? 'bg-bsb-gold/20 text-bsb-gold border border-bsb-gold/30' : 'text-bsb-dim hover:text-white'
+                      }`}
+                    >{yr}</button>
+                  ))}
+                </div>
+              )}
 
               {/* Sub-tab toggle (mobile) */}
               <div className="flex md:hidden bg-white/[0.04] rounded-lg p-0.5 border border-white/[0.06]">
@@ -676,9 +732,8 @@ export default function AdvancedStatsPage() {
                               else if (col.key === 'bb_pct') colorClass = pctColor(val, 6, 9, 12)
                               else if (col.key === 'wrc_plus') colorClass = pctColor(val, 90, 110, 130)
                               else if (col.key === 'sprint_speed') colorClass = pctColor(val, 26, 27.5, 29)
-                              else if (col.key === 'iso') colorClass = pctColor(val, 0.130, 0.175, 0.220)
-                              else if (col.key === 'contact_pct') colorClass = pctColor(val, 72, 78, 84)
-                              else if (col.key === 'o_swing_pct') colorClass = pctColor(val, 25, 30, 35, true)
+                              else if (col.key === 'whiff_pct') colorClass = pctColor(val, 15, 22, 28, true)
+                              else if (col.key === 'chase_rate') colorClass = pctColor(val, 22, 27, 32, true)
                               else if (col.key === 'fpts') colorClass = 'text-bsb-gold font-bold'
                             } else {
                               if (col.key === 'fb_velo') colorClass = pctColor(val, 92, 95, 97)
@@ -690,25 +745,22 @@ export default function AdvancedStatsPage() {
                               else if (col.key === 'location_plus') colorClass = pctColor(val, 90, 105, 115)
                               else if (col.key === 'xera') colorClass = pctColor(val, 3.0, 3.5, 4.2, true)
                               else if (col.key === 'fip') colorClass = pctColor(val, 3.0, 3.5, 4.2, true)
-                              else if (col.key === 'xfip') colorClass = pctColor(val, 3.0, 3.6, 4.2, true)
-                              else if (col.key === 'siera') colorClass = pctColor(val, 3.0, 3.5, 4.0, true)
                               else if (col.key === 'hard_hit_against') colorClass = pctColor(val, 28, 33, 38, true)
                               else if (col.key === 'barrel_against') colorClass = pctColor(val, 5, 7, 9, true)
-                              else if (col.key === 'swstr_pct') colorClass = pctColor(val, 10, 12, 14)
                               else if (col.key === 'gb_pct') colorClass = pctColor(val, 38, 44, 50)
-                              else if (col.key === 'hr_per_9') colorClass = pctColor(val, 0.8, 1.1, 1.4, true)
+                              else if (col.key === 'chase_rate') colorClass = pctColor(val, 28, 32, 36)
                               else if (col.key === 'fpts') colorClass = 'text-bsb-gold font-bold'
                             }
 
                             // Format display values
                             if (typeof val === 'number') {
-                              if (['xba', 'xslg', 'babip', 'iso', 'babip_against'].includes(col.key)) {
+                              if (['xba', 'xslg', 'babip'].includes(col.key)) {
                                 displayVal = val.toFixed(3)
-                              } else if (['xera', 'fip', 'xfip', 'siera', 'hr_per_9'].includes(col.key)) {
+                              } else if (['xera', 'fip'].includes(col.key)) {
                                 displayVal = val.toFixed(2)
-                              } else if (['exit_velo', 'fb_velo', 'launch_angle'].includes(col.key)) {
+                              } else if (['exit_velo', 'fb_velo', 'launch_angle', 'sprint_speed'].includes(col.key)) {
                                 displayVal = val.toFixed(1)
-                              } else if (['k_pct', 'bb_pct', 'hard_hit_pct', 'barrel_pct', 'o_swing_pct', 'contact_pct', 'pull_pct', 'gb_pct', 'fb_pct', 'whiff_pct', 'csw_pct', 'swstr_pct', 'hard_hit_against', 'barrel_against', 'lob_pct'].includes(col.key)) {
+                              } else if (['k_pct', 'bb_pct', 'hard_hit_pct', 'barrel_pct', 'gb_pct', 'whiff_pct', 'csw_pct', 'hard_hit_against', 'barrel_against', 'chase_rate'].includes(col.key)) {
                                 displayVal = val.toFixed(1)
                               }
                             }
