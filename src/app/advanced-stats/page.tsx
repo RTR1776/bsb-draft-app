@@ -33,26 +33,37 @@ type StatYear = '2022' | '2023' | '2024' | '2025'
 
 const YEARS: StatYear[] = ['2022', '2023', '2024', '2025']
 
-// Flatten multi-year data for a given year
+// ─── Pre-computed flattened data (computed once at module load) ─────
+const _batterCache: Record<string, BatterFlat[]> = {}
+const _pitcherCache: Record<string, PitcherFlat[]> = {}
+
 function flattenBatters(year: StatYear): BatterFlat[] {
-  return (advancedData.batters as BatterEntry[])
+  if (_batterCache[year]) return _batterCache[year]
+  _batterCache[year] = (advancedData.batters as BatterEntry[])
     .filter(b => b[year] != null)
     .map(b => ({
       ...b[year]!,
       id: b.id, name: b.name, team: b.team, pos: b.pos, age: b.age, fpts: b.fpts,
       has2022: b['2022'] != null, has2023: b['2023'] != null, has2024: b['2024'] != null, has2025: b['2025'] != null,
     }))
+  return _batterCache[year]
 }
 
 function flattenPitchers(year: StatYear): PitcherFlat[] {
-  return (advancedData.pitchers as PitcherEntry[])
+  if (_pitcherCache[year]) return _pitcherCache[year]
+  _pitcherCache[year] = (advancedData.pitchers as PitcherEntry[])
     .filter(p => p[year] != null)
     .map(p => ({
       ...p[year]!,
       id: p.id, name: p.name, team: p.team, role: p.role, age: p.age, fpts: p.fpts,
       has2022: p['2022'] != null, has2023: p['2023'] != null, has2024: p['2024'] != null, has2025: p['2025'] != null,
     }))
+  return _pitcherCache[year]
 }
+
+// ─── Pagination constants ───────────────────────────
+const STATS_PAGE_SIZE = 50
+const ANALYSIS_PAGE_SIZE = 25
 
 // Get trend arrow for a stat across years
 function getTrend(entry: BatterEntry | PitcherEntry, stat: string, invert = false): string {
@@ -199,9 +210,22 @@ function generateBatterAnalysis(b: BatterFlat, core: any, a: AnalysisEntry): str
     parts.push(`At ${b.age}, the aging curve is working against him, and ${trendText} — manage expectations accordingly.`)
   }
 
-  // Breakout flag
+  // Breakout flag with specific explainer
   if (a.breakout) {
-    parts.push(`BREAKOUT CANDIDATE: The combination of age, trajectory, and batted-ball quality makes him a prime breakout pick who could significantly outperform projections.`)
+    const reasons: string[] = []
+    if (a.age_phase === 'pre-peak') reasons.push(`just ${b.age} years old and still entering his physical prime`)
+    else if (a.age_phase === 'prime') reasons.push(`at ${b.age}, squarely in his prime production window`)
+    if (b.barrel_pct >= 10 && b.barrel_pct < 15) reasons.push(`${b.barrel_pct}% barrel rate shows power upside that hasn't fully translated yet`)
+    if (b.hard_hit_pct >= 40) reasons.push(`${b.hard_hit_pct}% hard-hit rate is elite-tier quality of contact`)
+    if (b.xba > 0.270 && core.avg < b.xba - 0.01) reasons.push(`xBA of ${b.xba} suggests his actual AVG should be higher`)
+    if (b.sprint_speed >= 28.5) reasons.push(`${b.sprint_speed} ft/s speed adds SB upside`)
+    if (b.whiff_pct <= 20 && b.bb_pct >= 8) reasons.push(`solid plate discipline (${b.whiff_pct}% whiff, ${b.bb_pct}% BB) shows mature approach`)
+    if (core.histFpts) {
+      const vals = Object.values(core.histFpts) as number[]
+      if (vals.length >= 2 && vals[vals.length - 1] > vals[vals.length - 2] * 1.15) reasons.push(`FPTS jumped ${Math.round(((vals[vals.length - 1] / vals[vals.length - 2]) - 1) * 100)}% last season — momentum is real`)
+    }
+    const reasonText = reasons.length > 0 ? reasons.join('; ') : 'age, trajectory, and batted-ball quality align'
+    parts.push(`BREAKOUT CANDIDATE: ${reasonText}. Could significantly outperform projections.`)
   }
 
   // BSB scoring insight
@@ -278,9 +302,22 @@ function generatePitcherAnalysis(p: PitcherFlat, core: any, a: AnalysisEntry): s
     parts.push(`At ${p.age}, age is a factor, and ${trendText} — velocity and stamina declines are real risks.`)
   }
 
-  // Breakout
+  // Breakout with specific explainer
   if (a.breakout) {
-    parts.push(`BREAKOUT CANDIDATE: His combination of stuff, age, and trajectory make him a prime candidate to take a major leap forward.`)
+    const reasons: string[] = []
+    if (a.age_phase === 'pre-peak') reasons.push(`just ${p.age} years old with room to develop`)
+    else if (a.age_phase === 'prime') reasons.push(`entering his prime years at ${p.age}`)
+    if (p.stuff_plus >= 110) reasons.push(`${p.stuff_plus} Stuff+ reflects elite pitch quality`)
+    if (p.whiff_pct >= 28) reasons.push(`${p.whiff_pct}% whiff rate generates swing-and-miss at an elite clip`)
+    if (p.xera <= 3.2) reasons.push(`${p.xera} xERA validates his run prevention`)
+    if (p.fb_velo >= 96) reasons.push(`${p.fb_velo} mph heat is a weapon`)
+    if (p.k_pct >= 27 && p.bb_pct <= 7) reasons.push(`elite K-BB spread (${p.k_pct}% K, ${p.bb_pct}% BB)`)
+    if (core.histFpts) {
+      const vals = Object.values(core.histFpts) as number[]
+      if (vals.length >= 1 && vals[vals.length - 1] >= 500) reasons.push(`already flashed ${vals[vals.length - 1]} FPTS last season`)
+    }
+    const reasonText = reasons.length > 0 ? reasons.join('; ') : 'stuff, age, and trajectory align'
+    parts.push(`BREAKOUT CANDIDATE: ${reasonText}. Prime candidate to take a major leap forward.`)
   }
 
   // BSB scoring insight
@@ -391,6 +428,8 @@ export default function AdvancedStatsPage() {
   const [analysisFilter, setAnalysisFilter] = useState<string>('all')
   const [expandedPlayer, setExpandedPlayer] = useState<string | null>(null)
   const [statYear, setStatYear] = useState<StatYear>('2025')
+  const [statsVisible, setStatsVisible] = useState(STATS_PAGE_SIZE)
+  const [analysisVisible, setAnalysisVisible] = useState(ANALYSIS_PAGE_SIZE)
   const searchRef = useRef<HTMLInputElement>(null)
 
   // Keyboard shortcuts
@@ -458,15 +497,33 @@ export default function AdvancedStatsPage() {
     return data
   }, [search, posFilter, sortKey, sortDir, statYear])
 
-  // Analysis data (always uses 2024)
+  // Validate breakout flag at runtime — established ELITE players with high FPTS aren't "breakout" candidates
+  const isValidBreakout = (a: AnalysisEntry, fpts: number): boolean => {
+    if (!a.breakout) return false
+    // Already-established elite stars aren't breakout candidates
+    if (a.value_tag === 'ELITE' && fpts >= 500) return false
+    // Late career / early decline players don't break out
+    if (a.age_phase === 'late career' || a.age_phase === 'early decline') return false
+    return true
+  }
+
+  // Analysis data (always uses 2025)
   const analysisPlayers = useMemo(() => {
     const isB = playerType === 'batters'
     const items = isB ? flattenBatters('2025') : flattenPitchers('2025')
-    let filtered = items.map(p => ({
-      ...p,
-      analysis: analyses[p.id],
-      core: isB ? batterCore[p.id] : pitcherCore[p.id],
-    })).filter(p => p.analysis)
+    let filtered = items.map(p => {
+      const rawAnalysis = analyses[p.id]
+      // Override breakout flag with validated version
+      const analysis = rawAnalysis ? {
+        ...rawAnalysis,
+        breakout: isValidBreakout(rawAnalysis, p.fpts),
+      } : rawAnalysis
+      return {
+        ...p,
+        analysis,
+        core: isB ? batterCore[p.id] : pitcherCore[p.id],
+      }
+    }).filter(p => p.analysis)
 
     if (search) {
       const q = search.toLowerCase()
@@ -489,6 +546,12 @@ export default function AdvancedStatsPage() {
     filtered.sort((a, b) => b.fpts - a.fpts)
     return filtered
   }, [playerType, search, posFilter, analysisFilter])
+
+  // Reset pagination when filters change
+  useEffect(() => {
+    setStatsVisible(STATS_PAGE_SIZE)
+    setAnalysisVisible(ANALYSIS_PAGE_SIZE)
+  }, [playerType, search, posFilter, sortKey, sortDir, statYear, analysisFilter, subTab])
 
   const navItems = [
     { id: 'stats', label: 'Stat Tables' },
@@ -706,7 +769,7 @@ export default function AdvancedStatsPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {currentData.map((row, i) => {
+                    {currentData.slice(0, statsVisible).map((row, i) => {
                       const a = analyses[row.id]
                       return (
                         <tr key={row.id}
@@ -796,8 +859,18 @@ export default function AdvancedStatsPage() {
                   </tbody>
                 </table>
               </div>
-              <div className="px-4 py-3 border-t border-white/[0.06] text-[10px] text-bsb-dim">
-                Showing {currentData.length} {playerType} &middot; Click column headers to sort &middot; Green = elite, Yellow = above avg, Red = below avg
+              <div className="px-4 py-3 border-t border-white/[0.06] flex items-center justify-between">
+                <span className="text-[10px] text-bsb-dim">
+                  Showing {Math.min(statsVisible, currentData.length)} of {currentData.length} {playerType} &middot; Click column headers to sort &middot; Green = elite, Yellow = above avg, Red = below avg
+                </span>
+                {statsVisible < currentData.length && (
+                  <button
+                    onClick={() => setStatsVisible(v => v + STATS_PAGE_SIZE)}
+                    className="px-4 py-1.5 bg-bsb-accent/20 border border-bsb-accent/40 rounded-full text-[11px] font-bold text-bsb-accent hover:bg-bsb-accent/30 transition-all"
+                  >
+                    Load {Math.min(STATS_PAGE_SIZE, currentData.length - statsVisible)} more
+                  </button>
+                )}
               </div>
             </div>
           </Section>
@@ -837,8 +910,8 @@ export default function AdvancedStatsPage() {
                 </div>
               </div>
 
-              {/* Player Analysis Cards */}
-              {analysisPlayers.map(player => {
+              {/* Player Analysis Cards (paginated) */}
+              {analysisPlayers.slice(0, analysisVisible).map(player => {
                 const isB = playerType === 'batters'
                 const a = player.analysis
                 const core = player.core
@@ -922,6 +995,81 @@ export default function AdvancedStatsPage() {
                           <p className="text-sm text-white/90 leading-relaxed">{analysisText}</p>
                         </div>
 
+                        {/* Breakout explainer callout */}
+                        {a.breakout && (
+                          <div className="mt-3 bg-yellow-500/[0.06] border border-yellow-500/20 rounded-lg p-3">
+                            <div className="flex items-center gap-2 mb-1.5">
+                              <span className="text-yellow-300 text-sm">&#9733;</span>
+                              <span className="text-[10px] text-yellow-300 font-bold uppercase tracking-wider">Why Breakout Candidate?</span>
+                            </div>
+                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-[11px]">
+                              {a.age_phase === 'pre-peak' && (
+                                <div className="flex items-center gap-1.5">
+                                  <span className="text-green-400">&#10003;</span>
+                                  <span className="text-white/80">Pre-peak age ({player.age})</span>
+                                </div>
+                              )}
+                              {a.age_phase === 'prime' && (
+                                <div className="flex items-center gap-1.5">
+                                  <span className="text-green-400">&#10003;</span>
+                                  <span className="text-white/80">Prime age ({player.age})</span>
+                                </div>
+                              )}
+                              {isB && (player as any).hard_hit_pct >= 38 && (
+                                <div className="flex items-center gap-1.5">
+                                  <span className="text-green-400">&#10003;</span>
+                                  <span className="text-white/80">Hard hit {(player as any).hard_hit_pct}%</span>
+                                </div>
+                              )}
+                              {isB && (player as any).barrel_pct >= 8 && (
+                                <div className="flex items-center gap-1.5">
+                                  <span className="text-green-400">&#10003;</span>
+                                  <span className="text-white/80">Barrel rate {(player as any).barrel_pct}%</span>
+                                </div>
+                              )}
+                              {isB && (player as any).sprint_speed >= 28.5 && (
+                                <div className="flex items-center gap-1.5">
+                                  <span className="text-green-400">&#10003;</span>
+                                  <span className="text-white/80">Speed {(player as any).sprint_speed} ft/s</span>
+                                </div>
+                              )}
+                              {!isB && (player as any).stuff_plus >= 110 && (
+                                <div className="flex items-center gap-1.5">
+                                  <span className="text-green-400">&#10003;</span>
+                                  <span className="text-white/80">Stuff+ {(player as any).stuff_plus}</span>
+                                </div>
+                              )}
+                              {!isB && (player as any).whiff_pct >= 28 && (
+                                <div className="flex items-center gap-1.5">
+                                  <span className="text-green-400">&#10003;</span>
+                                  <span className="text-white/80">Whiff rate {(player as any).whiff_pct}%</span>
+                                </div>
+                              )}
+                              {!isB && (player as any).fb_velo >= 96 && (
+                                <div className="flex items-center gap-1.5">
+                                  <span className="text-green-400">&#10003;</span>
+                                  <span className="text-white/80">Velo {(player as any).fb_velo} mph</span>
+                                </div>
+                              )}
+                              {core.histFpts && (() => {
+                                const vals = Object.values(core.histFpts) as number[]
+                                return vals.length >= 2 && vals[vals.length - 1] > vals[vals.length - 2] * 1.1
+                              })() && (
+                                <div className="flex items-center gap-1.5">
+                                  <span className="text-green-400">&#10003;</span>
+                                  <span className="text-white/80">Trending up YoY</span>
+                                </div>
+                              )}
+                              {a.valuation.includes('UNDER') && (
+                                <div className="flex items-center gap-1.5">
+                                  <span className="text-green-400">&#10003;</span>
+                                  <span className="text-white/80">Currently undervalued</span>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        )}
+
                         {/* Historical FPTS */}
                         {core.histFpts && Object.keys(core.histFpts).length > 0 && (
                           <div className="mt-3 flex items-center gap-3">
@@ -944,6 +1092,19 @@ export default function AdvancedStatsPage() {
                   </div>
                 )
               })}
+
+              {/* Load more button for analysis */}
+              {analysisVisible < analysisPlayers.length && (
+                <div className="flex justify-center pt-4">
+                  <button
+                    onClick={() => setAnalysisVisible(v => v + ANALYSIS_PAGE_SIZE)}
+                    className="px-6 py-2 bg-bsb-accent/20 border border-bsb-accent/40 rounded-full text-xs font-bold text-bsb-accent hover:bg-bsb-accent/30 transition-all"
+                  >
+                    Load {Math.min(ANALYSIS_PAGE_SIZE, analysisPlayers.length - analysisVisible)} more players
+                    <span className="text-bsb-dim ml-2">({analysisPlayers.length - analysisVisible} remaining)</span>
+                  </button>
+                </div>
+              )}
 
               {analysisPlayers.length === 0 && (
                 <div className="text-center py-12 text-bsb-dim">
