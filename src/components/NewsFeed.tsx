@@ -141,7 +141,7 @@ export function NewsFeed({
                     <span className="capitalize px-1 rounded bg-white/5">
                       {item.category.replace('-', ' ')}
                     </span>
-                    <span>{item.source === 'mlb-transactions' ? 'MLB' : 'RotoWire'}</span>
+                    <span>{item.source === 'mlb-transactions' ? 'MLB' : item.source === 'mlbtraderumors' ? 'MLBTR' : 'News'}</span>
                   </div>
                 </div>
               </div>

@@ -8,12 +8,19 @@ export async function GET() {
     const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
     const today = new Date().toISOString().split('T')[0]
 
+    const headers = {
+      'User-Agent': 'Mozilla/5.0 (compatible; BSBDraftApp/1.0)',
+    }
+
     const [transactionsRes, rssRes] = await Promise.allSettled([
       fetch(
         `https://statsapi.mlb.com/api/v1/transactions?startDate=${sevenDaysAgo}&endDate=${today}`,
-        { next: { revalidate: 300 } }
+        { headers, cache: 'no-store' }
       ),
-      fetch('https://www.rotowire.com/rss/news.xml', { next: { revalidate: 300 } }),
+      fetch('https://www.mlbtraderumors.com/feed', {
+        headers,
+        cache: 'no-store',
+      }),
     ])
 
     const transactions =
@@ -26,12 +33,26 @@ export async function GET() {
         ? await rssRes.value.text()
         : null
 
+    // Debug info for troubleshooting
+    const debug = {
+      mlb: transactionsRes.status === 'fulfilled'
+        ? { ok: transactionsRes.value.ok, status: transactionsRes.value.status }
+        : { error: (transactionsRes as PromiseRejectedResult).reason?.message || 'rejected' },
+      rss: rssRes.status === 'fulfilled'
+        ? { ok: rssRes.value.ok, status: rssRes.value.status }
+        : { error: (rssRes as PromiseRejectedResult).reason?.message || 'rejected' },
+    }
+
     return NextResponse.json({
       transactions: transactions?.transactions || [],
       rss: rssText,
       fetchedAt: Date.now(),
+      debug,
     })
-  } catch {
-    return NextResponse.json({ error: 'Failed to fetch news' }, { status: 500 })
+  } catch (err: any) {
+    return NextResponse.json(
+      { error: 'Failed to fetch news', detail: err?.message },
+      { status: 500 }
+    )
   }
 }

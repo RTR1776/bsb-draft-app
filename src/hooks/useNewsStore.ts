@@ -16,7 +16,7 @@ export type NewsItem = {
   headline: string
   description: string
   category: NewsCategory
-  source: 'mlb-transactions' | 'rotowire'
+  source: 'mlb-transactions' | 'rotowire' | 'mlbtraderumors'
   timestamp: number
   severity: NewsSeverity
   url?: string
@@ -26,7 +26,7 @@ export type NewsItem = {
 // Constants
 // ─────────────────────────────────────────
 const CACHE_KEY = 'bsb-news-cache'
-const CACHE_TTL = 5 * 60 * 1000 // 5 minutes
+const CACHE_TTL = 3 * 60 * 1000 // 3 minutes — shorter than refresh interval so API is actually called
 const REFRESH_INTERVAL = 5 * 60 * 1000 // 5 minutes
 const MAX_NEWS_AGE = 14 * 24 * 60 * 60 * 1000 // 14 days — discard older items
 
@@ -86,7 +86,7 @@ function parseMLBTransactions(transactions: any[]): NewsItem[] {
     })
 }
 
-function parseRotoWireRSS(xmlText: string | null): NewsItem[] {
+function parseRSSFeed(xmlText: string | null): NewsItem[] {
   if (!xmlText) return []
   try {
     const parser = new DOMParser()
@@ -100,20 +100,33 @@ function parseRotoWireRSS(xmlText: string | null): NewsItem[] {
       const link = item.querySelector('link')?.textContent || ''
       const pubDate = item.querySelector('pubDate')?.textContent || ''
 
-      // Try to extract player name from title (often formatted as "Player Name - Team: headline")
-      const nameMatch = title.match(/^([A-Z][a-z]+ [A-Z][a-zA-Z'-]+)/)
-      const playerName = nameMatch ? nameMatch[1] : ''
+      // Extract player names from title patterns:
+      // "Player Name - Team: headline" (RotoWire style)
+      // "Team Notes: Player, Player, Player" (MLBTR style)
+      // "Player Name Signs With Team" (MLBTR style)
+      let playerName = ''
+      const nameMatch = title.match(/^([A-Z][a-z]+(?:\s[A-Z][a-zA-Z'-]+)+)(?:\s(?:Signs|Agrees|Traded|Placed|Activated|Named|Returns|Expected|Likely|Could|Will|To|Heading|Joining|Cleared|Designated|Released|Outrighted|Optioned))/i)
+      if (nameMatch) {
+        playerName = nameMatch[1]
+      } else {
+        // Fallback: first capitalized multi-word name
+        const fallback = title.match(/^([A-Z][a-z]+ [A-Z][a-zA-Z'-]+)/)
+        if (fallback) playerName = fallback[1]
+      }
 
       const { category, severity } = categorizeFromText(title + ' ' + description)
 
+      // Determine source based on URL
+      const isMLBTR = link.includes('mlbtraderumors')
+
       result.push({
-        id: hashString(`rw-${title}-${pubDate}`),
+        id: hashString(`rss-${title}-${pubDate}`),
         playerName,
         playerId: null, // will be matched later
-        headline: title,
+        headline: title.length > 120 ? title.slice(0, 117) + '...' : title,
         description: description.replace(/<[^>]*>/g, '').slice(0, 200),
         category,
-        source: 'rotowire',
+        source: isMLBTR ? 'mlbtraderumors' : 'rotowire',
         timestamp: pubDate ? new Date(pubDate).getTime() : Date.now(),
         severity,
         url: link || undefined,
@@ -193,24 +206,30 @@ export function useNewsStore(allPlayers: Player[]) {
   const [error, setError] = useState<string | null>(null)
   const intervalRef = useRef<NodeJS.Timeout | null>(null)
 
-  const fetchNews = useCallback(async () => {
-    // Check cache first
-    const cached = getCachedNews()
-    if (cached) {
-      setItems(cached.items)
-      return
+  // Use a ref for allPlayers so fetchNews doesn't depend on it and cause interval churn
+  const playersRef = useRef(allPlayers)
+  playersRef.current = allPlayers
+
+  const fetchNews = useCallback(async (force?: boolean) => {
+    // Check cache first (skip if force refresh)
+    if (!force) {
+      const cached = getCachedNews()
+      if (cached) {
+        setItems(cached.items)
+        return
+      }
     }
 
     setIsLoading(true)
     setError(null)
 
     try {
-      const res = await fetch('/api/news')
+      const res = await fetch('/api/news', { cache: 'no-store' })
       if (!res.ok) throw new Error(`API returned ${res.status}`)
       const data = await res.json()
 
       const mlbItems = parseMLBTransactions(data.transactions)
-      const rssItems = parseRotoWireRSS(data.rss)
+      const rssItems = parseRSSFeed(data.rss)
 
       // Combine, filter stale items, and sort by timestamp (newest first)
       const cutoff = Date.now() - MAX_NEWS_AGE
@@ -227,22 +246,30 @@ export function useNewsStore(allPlayers: Player[]) {
         return true
       })
 
-      // Match to our player data
-      combined = matchNewsToPlayers(combined, allPlayers)
+      // Match to our player data (use ref to avoid stale closure)
+      combined = matchNewsToPlayers(combined, playersRef.current)
 
       setItems(combined)
       setCachedNews(combined, data.fetchedAt || Date.now())
     } catch (err: any) {
       setError(err.message || 'Failed to load news')
+      // On failure, try to show cached data even if stale
+      try {
+        const raw = localStorage.getItem(CACHE_KEY)
+        if (raw) {
+          const stale = JSON.parse(raw)
+          if (stale.items?.length) setItems(stale.items)
+        }
+      } catch { /* ignore */ }
     } finally {
       setIsLoading(false)
     }
-  }, [allPlayers])
+  }, []) // No dependencies — uses playersRef
 
-  // Fetch on mount + auto-refresh
+  // Fetch on mount + auto-refresh (stable interval — no churn)
   useEffect(() => {
     fetchNews()
-    intervalRef.current = setInterval(fetchNews, REFRESH_INTERVAL)
+    intervalRef.current = setInterval(() => fetchNews(), REFRESH_INTERVAL)
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current)
     }
@@ -281,6 +308,9 @@ export function useNewsStore(allPlayers: Player[]) {
     [byPlayer]
   )
 
+  // Force refresh bypasses cache
+  const forceRefresh = useCallback(() => fetchNews(true), [fetchNews])
+
   return {
     news: items,
     newsByPlayer: byPlayer,
@@ -289,6 +319,6 @@ export function useNewsStore(allPlayers: Player[]) {
     topSeverityForPlayer,
     isLoading,
     error,
-    refresh: fetchNews,
+    refresh: forceRefresh,
   }
 }
