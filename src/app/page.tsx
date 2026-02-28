@@ -267,6 +267,9 @@ export default function Home() {
           <Link href="/insights" className="px-3 py-1 text-xs text-bsb-dim hover:text-bsb-gold hover:bg-white/5 rounded transition-all" title="Weekly Variance Insights">
             📊 Insights
           </Link>
+          <Link href="/advanced-stats" className="px-3 py-1 text-xs text-bsb-dim hover:text-bsb-gold hover:bg-white/5 rounded transition-all" title="Advanced Stats & Player Analysis">
+            🔬 Advanced
+          </Link>
         </div>
       </header>
 

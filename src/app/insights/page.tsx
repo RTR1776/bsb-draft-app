@@ -339,10 +339,13 @@ export default function InsightsPage() {
           </div>
           <div className="flex items-center gap-2">
             <Link href="/guide" className="px-3 py-1.5 text-xs text-bsb-dim hover:text-white hover:bg-white/5 rounded-full transition-all">
-              📖 Guide
+              Guide
+            </Link>
+            <Link href="/advanced-stats" className="px-3 py-1.5 text-xs text-bsb-dim hover:text-white hover:bg-white/5 rounded-full transition-all">
+              Advanced
             </Link>
             <Link href="/" className="px-4 py-1.5 bg-bsb-accent/20 border border-bsb-accent/40 rounded-full text-xs font-bold text-bsb-accent hover:bg-bsb-accent/30 transition-all">
-              Draft Board →
+              Draft Board &rarr;
             </Link>
           </div>
         </div>
@@ -805,6 +808,7 @@ export default function InsightsPage() {
             </p>
             <div className="flex justify-center gap-4 mt-4">
               <Link href="/guide" className="text-xs text-bsb-dim hover:text-bsb-gold transition-all">📖 League Guide</Link>
+              <Link href="/advanced-stats" className="text-xs text-bsb-dim hover:text-bsb-gold transition-all">🔬 Advanced Stats</Link>
               <Link href="/" className="text-xs text-bsb-accent hover:text-bsb-accent/80 transition-all">🏠 Draft Board</Link>
             </div>
           </div>
