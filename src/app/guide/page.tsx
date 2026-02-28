@@ -124,6 +124,7 @@ export default function GuidePage() {
   }
 
   const navItems = [
+    { id: 'getting-started', label: 'Start' },
     { id: 'scoring', label: 'Scoring' },
     { id: 'smart-numbers', label: 'Smart Numbers' },
     { id: 'draft-format', label: 'Draft Format' },
@@ -199,6 +200,76 @@ export default function GuidePage() {
             </div>
           </div>
         </Section>
+
+        {/* ═══════════════════════════════════════ */}
+        {/* GETTING STARTED */}
+        {/* ═══════════════════════════════════════ */}
+        <section id="getting-started" ref={registerSection('getting-started')} className="pt-16">
+          <Section>
+            <div className="flex items-center gap-3 mb-2">
+              <span className="text-3xl">🚀</span>
+              <div>
+                <h2 className="text-3xl font-black text-white">Getting Started</h2>
+                <p className="text-bsb-dim text-sm mt-1">First time? Here&apos;s how to set up and what you&apos;re looking at.</p>
+              </div>
+            </div>
+          </Section>
+
+          <div className="grid md:grid-cols-2 gap-6 mt-8">
+            <Section delay={100}>
+              <div className="rounded-2xl border border-bsb-gold/20 bg-bsb-gold/[0.03] p-6 h-full">
+                <h3 className="text-white font-bold text-lg mb-1">⚾ Pick Your Team</h3>
+                <p className="text-bsb-dim text-xs mb-3">On your first visit, a team selector modal appears. Choose your team from the 16-team league. Your selection is saved to your browser and persists between sessions — even if you reset the draft board.</p>
+                <div className="space-y-2 text-xs">
+                  <div className="flex gap-2">
+                    <span className="text-bsb-gold shrink-0">→</span>
+                    <span className="text-white/80">Each person runs the app in their own browser</span>
+                  </div>
+                  <div className="flex gap-2">
+                    <span className="text-bsb-gold shrink-0">→</span>
+                    <span className="text-white/80">Your picks show as <span className="text-bsb-gold font-bold">ME</span>, others as their team abbreviation</span>
+                  </div>
+                  <div className="flex gap-2">
+                    <span className="text-bsb-gold shrink-0">→</span>
+                    <span className="text-white/80">Click your team name in the header to switch teams anytime</span>
+                  </div>
+                </div>
+              </div>
+            </Section>
+
+            <Section delay={200}>
+              <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-6 h-full">
+                <h3 className="text-white font-bold text-lg mb-1">🖥️ The Draft Board</h3>
+                <p className="text-bsb-dim text-xs mb-3">The main screen has three parts: a left strategy sidebar, the central player board, and a right roster/teams sidebar.</p>
+                <div className="space-y-2 text-xs">
+                  <div className="flex gap-2">
+                    <span className="text-bsb-accent shrink-0">→</span>
+                    <span className="text-white/80"><strong className="text-white">Top bar:</strong> Draft round counter, pick tracker, category selector, and search</span>
+                  </div>
+                  <div className="flex gap-2">
+                    <span className="text-bsb-accent shrink-0">→</span>
+                    <span className="text-white/80"><strong className="text-white">Center:</strong> All 600 players ranked by FPTS with live stats</span>
+                  </div>
+                  <div className="flex gap-2">
+                    <span className="text-bsb-accent shrink-0">→</span>
+                    <span className="text-white/80"><strong className="text-white">Hint bar:</strong> Shows click/right-click actions and your team name</span>
+                  </div>
+                </div>
+              </div>
+            </Section>
+          </div>
+
+          <Section delay={300}>
+            <div className="mt-6 rounded-2xl bg-white/[0.02] border border-white/[0.06] p-6">
+              <h3 className="text-white font-bold text-sm mb-3">📱 Multi-User Draft Setup</h3>
+              <p className="text-bsb-dim text-xs leading-relaxed">
+                Each drafter opens the app in their own browser. All draft state (picks logged, categories selected) is saved locally per browser.
+                During the draft, both users manually log picks as they&apos;re announced — click a row to draft to yourself, right-click to assign to another team.
+                The app retains all picks between sessions, so you can close your laptop between the Mini and Mega weekends and pick up right where you left off.
+              </p>
+            </div>
+          </Section>
+        </section>
 
         {/* ═══════════════════════════════════════ */}
         {/* SCORING SYSTEM */}
@@ -397,6 +468,81 @@ export default function GuidePage() {
                 <div>
                   <span className="text-white font-bold text-sm">Position Rank</span>
                   <p className="text-bsb-dim text-xs">The number on each badge = rank at their position. SS3 = 3rd-best shortstop. Lower = better.</p>
+                </div>
+              </div>
+            </div>
+          </Section>
+
+          {/* BSB Custom Projection */}
+          <Section delay={500}>
+            <div className="mt-6 rounded-2xl border border-bsb-gold/20 bg-bsb-gold/[0.03] p-6">
+              <div className="flex items-center gap-2 mb-3">
+                <span className="px-2.5 py-1 rounded-lg bg-bsb-gold/20 text-bsb-gold text-xs font-black">BSB PROJ</span>
+                <span className="text-white font-bold">Custom BSB Projection</span>
+              </div>
+              <p className="text-bsb-dim text-sm leading-relaxed mb-4">
+                Our proprietary projection blends <span className="text-bsb-gold font-bold">3 years of game-log history</span> with Steamer projections, adjusted for age curves and injury history. Unlike Steamer, our model uses the exact BSB scoring formula — including QS, HLD, IRSTR, and TB — rather than approximating from traditional stats.
+              </p>
+              <div className="grid grid-cols-3 gap-3">
+                <div className="bg-white/[0.04] rounded-xl p-3 text-center">
+                  <span className="text-bsb-gold text-xs font-bold">BSB Proj</span>
+                  <p className="text-[10px] text-bsb-dim mt-0.5">Game-log BSB FPTS blended with Steamer</p>
+                </div>
+                <div className="bg-white/[0.04] rounded-xl p-3 text-center">
+                  <span className="text-white/50 text-xs font-bold">Steamer</span>
+                  <p className="text-[10px] text-bsb-dim mt-0.5">Industry-standard baseline</p>
+                </div>
+                <div className="bg-white/[0.04] rounded-xl p-3 text-center">
+                  <span className="text-green-400 text-xs font-bold">+Delta</span>
+                  <p className="text-[10px] text-bsb-dim mt-0.5">Green = BSB higher, Red = lower</p>
+                </div>
+              </div>
+            </div>
+          </Section>
+
+          {/* Injury / Consistency / Age Curve badges */}
+          <Section delay={600}>
+            <div className="mt-6 rounded-2xl border border-white/[0.06] bg-white/[0.02] p-6">
+              <div className="flex items-center gap-2 mb-4">
+                <span className="text-xl">🏥</span>
+                <span className="text-white font-bold">Player Profile Badges</span>
+              </div>
+              <p className="text-bsb-dim text-sm leading-relaxed mb-4">
+                Every player card shows three diagnostic badges — visible on the card header and in the draft day decision framework:
+              </p>
+              <div className="space-y-3">
+                <div className="bg-white/[0.03] rounded-xl p-4">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-[9px] px-1.5 py-0.5 rounded border font-bold bg-red-500/20 text-red-400 border-red-500/40">⚠ INJURY RISK</span>
+                    <span className="text-[9px] px-1.5 py-0.5 rounded border font-bold bg-orange-500/20 text-orange-400 border-orange-500/40">⚠ INJURY PRONE</span>
+                    <span className="text-[9px] px-1.5 py-0.5 rounded border font-bold bg-yellow-500/20 text-yellow-400 border-yellow-500/40">MINOR INJ</span>
+                  </div>
+                  <p className="text-bsb-dim text-xs leading-relaxed mt-1.5">
+                    <span className="text-white font-bold">Injury Flag</span> — Based on games played over 3 years vs expected (155G for batters, 31 GS for SP, 65 G for RP).
+                    SEVERE (&lt;55%), MODERATE (55-74%), MINOR (75-89%), or HEALTHY (≥90%, no badge shown).
+                  </p>
+                </div>
+                <div className="bg-white/[0.03] rounded-xl p-4">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-[9px] px-1.5 py-0.5 rounded border font-bold bg-green-500/20 text-green-400 border-green-500/40">CON: A</span>
+                    <span className="text-[9px] px-1.5 py-0.5 rounded border font-bold bg-blue-500/20 text-blue-300 border-blue-500/40">CON: B</span>
+                    <span className="text-[9px] px-1.5 py-0.5 rounded border font-bold bg-white/10 text-white/50 border-white/20">CON: C</span>
+                    <span className="text-[9px] px-1.5 py-0.5 rounded border font-bold bg-red-500/10 text-red-400/70 border-red-500/30">CON: D</span>
+                  </div>
+                  <p className="text-bsb-dim text-xs leading-relaxed mt-1.5">
+                    <span className="text-white font-bold">Consistency Grade</span> — Weekly CV (coefficient of variation) mapped to A-F. A = very consistent output, F = wildly unpredictable. Batters are naturally more consistent than pitchers.
+                  </p>
+                </div>
+                <div className="bg-white/[0.03] rounded-xl p-4">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-[9px] px-1.5 py-0.5 rounded border font-bold bg-blue-500/10 text-blue-300/70 border-blue-500/20">Pre-Peak</span>
+                    <span className="text-[9px] px-1.5 py-0.5 rounded border font-bold bg-green-500/10 text-green-400/70 border-green-500/20">Peak</span>
+                    <span className="text-[9px] px-1.5 py-0.5 rounded border font-bold bg-orange-500/10 text-orange-400/70 border-orange-500/20">Declining</span>
+                    <span className="text-[9px] px-1.5 py-0.5 rounded border font-bold bg-red-500/10 text-red-400/70 border-red-500/20">Late Career</span>
+                  </div>
+                  <p className="text-bsb-dim text-xs leading-relaxed mt-1.5">
+                    <span className="text-white font-bold">Age Curve</span> — Based on research-backed aging curves. Batters peak 26-29, SPs peak 25-29. Pre-peak players may outperform projections; declining/late career players carry regression risk.
+                  </p>
                 </div>
               </div>
             </div>
@@ -882,12 +1028,14 @@ export default function GuidePage() {
           </Section>
 
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mt-8">
-            <Section delay={50}><Tip emoji="👤" title="Bio">Age, bats/throws, height &amp; weight, MLB debut year, years of service, birth country.</Tip></Section>
-            <Section delay={100}><Tip emoji="🏆" title="BSB Fantasy Score">The big gold FPTS number, trend arrow (up or down vs last season), VORP, PANA, and WAR at a glance.</Tip></Section>
-            <Section delay={150}><Tip emoji="📈" title="3-Year History">Bar chart showing actual BSB fantasy points for 2022, 2023, 2024 plus the 2025 projection — all using our exact scoring.</Tip></Section>
-            <Section delay={200}><Tip emoji="🔢" title="Scoring Breakdown">Every category listed with raw stat, multiplier, and points earned. See exactly where a player&apos;s value comes from.</Tip></Section>
-            <Section delay={250}><Tip emoji="📊" title="Advanced Stats">Traditional metrics for context. Batters: AVG, OBP, SLG, OPS. Pitchers: ERA, WHIP, K/9, K:BB ratio.</Tip></Section>
-            <Section delay={300}><Tip emoji="🎯" title="Draft Context">Next available player at this position and the drop-off, a comparable player, position rank, and draft status.</Tip></Section>
+            <Section delay={50}><Tip emoji="👤" title="Bio + Profile Badges">Age, bats/throws, height &amp; weight, debut, and three diagnostic badges — injury flag, consistency grade (A-F), and age curve label.</Tip></Section>
+            <Section delay={100}><Tip emoji="🏆" title="BSB Fantasy Score">The big gold FPTS number, trend arrow (up/down vs last season), VORP, PANA, and WAR at a glance.</Tip></Section>
+            <Section delay={150}><Tip emoji="🔬" title="BSB vs Steamer">Side-by-side custom BSB projection vs Steamer, with delta indicator. Shows how many years of game-log data informed the projection.</Tip></Section>
+            <Section delay={200}><Tip emoji="📈" title="3-Year History">Bar chart showing actual BSB FPTS for 2022-2024 plus the 2025 projection — all using our exact scoring formula.</Tip></Section>
+            <Section delay={250}><Tip emoji="🏥" title="Durability & Consistency">Health bars per season (games vs expected), weekly CV, avg FPTS/week, consistency grade, and overall health percentage.</Tip></Section>
+            <Section delay={300}><Tip emoji="🔢" title="Scoring Breakdown">Every category with raw stat, multiplier, and points earned. See exactly where a player&apos;s value comes from.</Tip></Section>
+            <Section delay={350}><Tip emoji="📊" title="Advanced + Draft Context">Traditional stats (AVG, ERA, WHIP), next available at position, comparable player, position rank, and draft status.</Tip></Section>
+            <Section delay={400}><Tip emoji="📰" title="Player News">Recent transaction and injury news from MLB and RotoWire, with severity indicators (red/orange/blue dots).</Tip></Section>
           </div>
         </section>
 
@@ -933,15 +1081,19 @@ export default function GuidePage() {
             <Section delay={200}>
               <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-6 h-full">
                 <h3 className="text-white font-bold text-lg mb-1">▶ Right Sidebar</h3>
-                <p className="text-bsb-dim text-xs mb-4">Two tabs</p>
+                <p className="text-bsb-dim text-xs mb-4">Three tabs</p>
                 <div className="space-y-3 text-sm">
                   <div>
                     <span className="text-bsb-accent font-bold">My Team Tab</span>
-                    <p className="text-bsb-dim text-xs mt-0.5">Your drafted roster by position (C, 1B, 2B, 3B, SS, OF, SP, RP), running FPTS total, and full draft log with every pick in order.</p>
+                    <p className="text-bsb-dim text-xs mt-0.5">Your drafted roster by position (C, 1B, 2B, 3B, SS, OF, SP, RP), running FPTS total, and full draft log with every pick in order. Shows your selected team name and player count.</p>
                   </div>
                   <div>
                     <span className="text-bsb-accent font-bold">All Teams Tab</span>
                     <p className="text-bsb-dim text-xs mt-0.5">Every team with their total FPTS, player count, and a strength meter. Click any team to expand and see who they&apos;ve drafted.</p>
+                  </div>
+                  <div>
+                    <span className="text-bsb-accent font-bold">News Tab</span>
+                    <p className="text-bsb-dim text-xs mt-0.5">Live player news from MLB transactions and RotoWire. Severity-coded (red = high impact, orange = medium, blue = info). Undrafted players with news show a colored dot next to their name on the main board.</p>
                   </div>
                 </div>
               </div>
@@ -1008,8 +1160,11 @@ export default function GuidePage() {
 
           <Section delay={100}>
             <div className="mt-8 rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4">
+              <div className="text-[10px] text-bsb-dim uppercase tracking-wider px-3 pb-2 border-b border-white/[0.04] mb-2 font-bold">
+                Select your team on first visit — your choice is saved locally and persists between sessions
+              </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-1">
-                <TeamRow num={0} name="Frequent Fliers" isYou />
+                <TeamRow num={0} name="Frequent Fliers" />
                 <TeamRow num={1} name="Deuces Wild" />
                 <TeamRow num={2} name="El Guapo Gato" />
                 <TeamRow num={3} name="Fulton's Folly" />
