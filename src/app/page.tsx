@@ -17,6 +17,7 @@ import { MyTeamPositionGrid, AllTeamsPanel } from '@/components/TeamPanels'
 import { TeamSelector } from '@/components/TeamSelector'
 import { useNewsStore } from '@/hooks/useNewsStore'
 import { NewsFeed } from '@/components/NewsFeed'
+import { MyPicksPanel } from '@/components/MyPicksPanel'
 
 // ─────────────────────────────────────────
 // MAIN APP
@@ -293,11 +294,21 @@ export default function Home() {
             selected={store.draftState.myTemplate} onSelect={store.setMyTemplate}
           />
           {store.draftState.myTemplate && store.templates[store.draftState.myTemplate] && (
-            <TemplateDetail
-              template={store.draftState.myTemplate}
-              picks={store.templates[store.draftState.myTemplate]}
-              activeCategory={store.draftState.activeCategory}
-            />
+            <>
+              <TemplateDetail
+                template={store.draftState.myTemplate}
+                picks={store.templates[store.draftState.myTemplate]}
+                activeCategory={store.draftState.activeCategory}
+              />
+              <div className="mt-3">
+                <MyPicksPanel
+                  templatePicks={store.templates[store.draftState.myTemplate]}
+                  categories={store.categories}
+                  activeCategory={store.draftState.activeCategory}
+                  categoryPickCounts={store.draftState.categoryPicks}
+                />
+              </div>
+            </>
           )}
 
           <div className="mt-4">

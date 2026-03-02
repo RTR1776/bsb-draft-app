@@ -16,7 +16,7 @@ export const TEAM_NAMES: Record<number, string> = {
   9: 'Betty White Sox',
   10: 'Dirty Water All-Stars',
   11: 'Hot Dog Junkies',
-  12: 'Mesa Joses',
+  12: 'Angry Hippies',
   13: 'Sedition Brothers',
   14: 'Silly Santos',
   15: 'St. Louis Browns',
@@ -27,7 +27,7 @@ export function teamAbbrev(num: number): string {
   if (num === 0) return 'FF'
   const abbrevs: Record<number, string> = {
     1: 'DW', 2: 'EGG', 3: 'FF', 4: 'HH', 5: 'KCM', 6: 'KD', 7: 'NSY',
-    8: '#s', 9: 'BWS', 10: 'DWA', 11: 'HDJ', 12: 'MJ', 13: 'SBr',
+    8: '#s', 9: 'BWS', 10: 'DWA', 11: 'HDJ', 12: 'AH', 13: 'SBr',
     14: 'SS', 15: 'SLB', 16: 'UN',
   }
   return abbrevs[num] || `T${num}`

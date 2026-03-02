@@ -6,6 +6,7 @@ import templatesData from '@/data/templates.json'
 import analysisData from '@/data/analysis.json'
 import draftCategoriesData from '@/data/draftCategories.json'
 import projectionsData from '@/data/projections.json'
+import draftOrderData from '@/data/draftOrder2026.json'
 
 export type Player = {
   id: string
@@ -117,11 +118,17 @@ export function useDraftStore() {
   const setMyTeamNumber = useCallback((num: number) => {
     setMyTeamNumberState(num)
     try { localStorage.setItem(TEAM_KEY, String(num)) } catch {}
+    // Auto-set template from 2026 draft order
+    const tpl = (draftOrderData as any).teamTemplates?.[String(num)]
+    if (tpl) {
+      setDraftState(prev => prev.myTemplate === tpl ? prev : { ...prev, myTemplate: tpl })
+    }
   }, [])
 
   const templates = templatesData as Record<string, Record<string, number>>
   const analysis = analysisData as any
   const categories = draftCategoriesData as DraftCategory[]
+  const teamTemplates2026 = (draftOrderData as any).teamTemplates as Record<string, string>
 
   // Load saved state from localStorage
   useEffect(() => {
@@ -156,6 +163,14 @@ export function useDraftStore() {
       console.warn('Failed to load draft state:', e)
     }
   }, [])
+
+  // Auto-set template from 2026 draft order if not already set
+  useEffect(() => {
+    if (myTeamNumber !== null && !draftState.myTemplate) {
+      const tpl = teamTemplates2026[String(myTeamNumber)]
+      if (tpl) setDraftState(prev => ({ ...prev, myTemplate: tpl }))
+    }
+  }, [myTeamNumber, draftState.myTemplate, teamTemplates2026])
 
   // Save state to localStorage on changes
   useEffect(() => {

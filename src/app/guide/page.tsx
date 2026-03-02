@@ -1176,7 +1176,7 @@ export default function GuidePage() {
                 <TeamRow num={9} name="Betty White Sox" />
                 <TeamRow num={10} name="Dirty Water All-Stars" />
                 <TeamRow num={11} name="Hot Dog Junkies" />
-                <TeamRow num={12} name="Mesa Joses" />
+                <TeamRow num={12} name="Angry Hippies" />
                 <TeamRow num={13} name="Sedition Brothers" />
                 <TeamRow num={14} name="Silly Santos" />
                 <TeamRow num={15} name="St. Louis Browns" />
