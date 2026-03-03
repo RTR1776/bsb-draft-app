@@ -2,9 +2,6 @@
 import { useState, useMemo, useRef, useEffect } from 'react'
 import Link from 'next/link'
 import advancedData from '@/data/advancedStats.json'
-import analysesData from '@/data/playerAnalyses.json'
-import battersData from '@/data/batters.json'
-import pitchersData from '@/data/pitchers.json'
 
 // ─── Types ──────────────────────────────────────────
 type BatterYearStats = {
@@ -25,10 +22,8 @@ type BatterEntry = { id: string; name: string; team: string; pos: string; age: n
 type PitcherEntry = { id: string; name: string; team: string; role: string; age: number; fpts: number; '2022': PitcherYearStats | null; '2023': PitcherYearStats | null; '2024': PitcherYearStats | null; '2025': PitcherYearStats | null }
 type BatterFlat = BatterYearStats & { id: string; name: string; team: string; pos: string; age: number; fpts: number; has2022: boolean; has2023: boolean; has2024: boolean; has2025: boolean }
 type PitcherFlat = PitcherYearStats & { id: string; name: string; team: string; role: string; age: number; fpts: number; has2022: boolean; has2023: boolean; has2024: boolean; has2025: boolean }
-type AnalysisEntry = { valuation: string; age_phase: string; value_tag: string; breakout: boolean; type: string }
 type SortDir = 'asc' | 'desc'
 type PlayerType = 'batters' | 'pitchers'
-type SubTab = 'stats' | 'analysis'
 type StatYear = '2022' | '2023' | '2024' | '2025'
 
 const YEARS: StatYear[] = ['2022', '2023', '2024', '2025']
@@ -63,7 +58,6 @@ function flattenPitchers(year: StatYear): PitcherFlat[] {
 
 // ─── Pagination constants ───────────────────────────
 const STATS_PAGE_SIZE = 50
-const ANALYSIS_PAGE_SIZE = 25
 
 // Get trend arrow for a stat across years
 function getTrend(entry: BatterEntry | PitcherEntry, stat: string, invert = false): string {
@@ -81,12 +75,6 @@ function getTrend(entry: BatterEntry | PitcherEntry, stat: string, invert = fals
   const improving = invert ? diff < -threshold : diff > threshold
   return improving ? '↑' : '↓'
 }
-
-const analyses = analysesData as Record<string, AnalysisEntry>
-
-// ─── Batter core data lookup ────────────────────────
-const batterCore = Object.fromEntries((battersData as any[]).map(b => [b.id, b]))
-const pitcherCore = Object.fromEntries((pitchersData as any[]).map(p => [p.id, p]))
 
 // ─── Animated section wrapper ───────────────────────
 function Section({ children, delay = 0 }: { children: React.ReactNode; delay?: number }) {
@@ -119,225 +107,6 @@ function pctColor(val: number, low: number, mid: number, high: number, invert = 
   if (val >= high) return 'text-green-400'
   if (val >= mid) return 'text-yellow-300'
   return 'text-red-400'
-}
-
-function valuationColor(v: string) {
-  if (v.includes('UNDER')) return 'text-green-400'
-  if (v.includes('OVER')) return 'text-red-400'
-  return 'text-bsb-dim'
-}
-
-function valuationBg(v: string) {
-  if (v.includes('UNDER')) return 'bg-green-500/10 border-green-500/20'
-  if (v.includes('OVER')) return 'bg-red-500/10 border-red-500/20'
-  return 'bg-white/[0.03] border-white/[0.06]'
-}
-
-function tierBadge(tag: string) {
-  const colors: Record<string, string> = {
-    'ELITE': 'bg-yellow-500/20 text-yellow-300 border-yellow-500/30',
-    'PREMIUM': 'bg-blue-500/20 text-blue-300 border-blue-500/30',
-    'SOLID': 'bg-green-500/20 text-green-300 border-green-500/30',
-    'AVERAGE': 'bg-white/10 text-bsb-dim border-white/10',
-    'REPLACEMENT': 'bg-red-500/10 text-red-400 border-red-500/20',
-  }
-  return colors[tag] || 'bg-white/10 text-bsb-dim border-white/10'
-}
-
-// ─── Bar Chart Component ────────────────────────────
-function StatBar({ value, max, color = 'bg-bsb-accent' }: { value: number; max: number; color?: string }) {
-  const pct = Math.min(100, Math.max(0, (value / max) * 100))
-  return (
-    <div className="w-full h-1.5 bg-white/[0.06] rounded-full overflow-hidden">
-      <div className={`h-full rounded-full ${color} transition-all duration-500`} style={{ width: `${pct}%` }} />
-    </div>
-  )
-}
-
-// ─── Generate analysis text ─────────────────────────
-function generateBatterAnalysis(b: BatterFlat, core: any, a: AnalysisEntry): string {
-  const hist = core.histFpts || {}
-  const histVals = Object.entries(hist).sort(([a],[b]) => a.localeCompare(b))
-  const trendText = histVals.length >= 2
-    ? (histVals[histVals.length-1][1] as number) > (histVals[histVals.length-2][1] as number)
-      ? 'on an upward trajectory'
-      : 'trending downward'
-    : 'with limited track record'
-
-  const parts: string[] = []
-
-  // Lead with most interesting stat
-  if (b.barrel_pct >= 15) {
-    parts.push(`${b.name} is an elite barrel machine at ${b.barrel_pct}% barrel rate, ranking among the top power threats in the game.`)
-  } else if (b.sprint_speed >= 29.5) {
-    parts.push(`${b.name} is a true speed demon with a ${b.sprint_speed} ft/s sprint speed, making him a weapon on the basepaths.`)
-  } else if (b.exit_velo >= 92) {
-    parts.push(`${b.name} consistently drives the ball with authority, posting a ${b.exit_velo} mph exit velocity that ranks among the elite.`)
-  } else if (b.wrc_plus >= 140) {
-    parts.push(`${b.name} is an offensive force with a ${b.wrc_plus} wRC+, meaning he produces ${b.wrc_plus - 100}% more run value than the average hitter.`)
-  } else if (b.bb_pct >= 12 && b.k_pct <= 18) {
-    parts.push(`${b.name} has an elite plate approach with a ${b.bb_pct}% walk rate against just a ${b.k_pct}% strikeout rate — a rare discipline combo.`)
-  } else if (b.whiff_pct <= 15) {
-    parts.push(`${b.name} is a contact wizard with just ${b.whiff_pct}% whiff rate, rarely giving away at-bats and consistently putting the ball in play.`)
-  } else {
-    parts.push(`${b.name} projects for ${core.fpts} FPTS this season as a ${core.pos} for ${core.team}.`)
-  }
-
-  // xStats comparison
-  if (b.xba > core.avg + 0.012) {
-    parts.push(`His expected batting average of ${b.xba} exceeds his projected ${core.avg} AVG, suggesting his batted ball quality deserves a higher average — there's upside here.`)
-  } else if (b.xba < core.avg - 0.012) {
-    parts.push(`His xBA of ${b.xba} sits below his projected ${core.avg} AVG, hinting that some BABIP luck may be baked into his projections.`)
-  }
-
-  if (b.xslg > core.slg + 0.025) {
-    parts.push(`His xSLG of ${b.xslg} outpaces his projected ${core.slg} SLG, meaning his raw power metrics support even more production.`)
-  }
-
-  // BABIP flag
-  if (b.babip >= 0.350) {
-    parts.push(`A ${b.babip} BABIP is elevated and could regress, though his ${b.hard_hit_pct}% hard hit rate may sustain it.`)
-  } else if (b.babip <= 0.260) {
-    parts.push(`A ${b.babip} BABIP looks unlucky and could bounce back — this is a buy-low indicator.`)
-  }
-
-  // Age / trajectory
-  if (a.age_phase === 'pre-peak') {
-    parts.push(`At just ${b.age}, he's still entering his physical prime and ${trendText} — the ceiling hasn't been reached yet.`)
-  } else if (a.age_phase === 'prime') {
-    parts.push(`At ${b.age}, he's squarely in his prime years and ${trendText}.`)
-  } else if (a.age_phase === 'late career') {
-    parts.push(`At ${b.age}, the aging curve is working against him, and ${trendText} — manage expectations accordingly.`)
-  }
-
-  // Breakout flag with specific explainer
-  if (a.breakout) {
-    const reasons: string[] = []
-    if (a.age_phase === 'pre-peak') reasons.push(`just ${b.age} years old and still entering his physical prime`)
-    else if (a.age_phase === 'prime') reasons.push(`at ${b.age}, squarely in his prime production window`)
-    if (b.barrel_pct >= 10 && b.barrel_pct < 15) reasons.push(`${b.barrel_pct}% barrel rate shows power upside that hasn't fully translated yet`)
-    if (b.hard_hit_pct >= 40) reasons.push(`${b.hard_hit_pct}% hard-hit rate is elite-tier quality of contact`)
-    if (b.xba > 0.270 && core.avg < b.xba - 0.01) reasons.push(`xBA of ${b.xba} suggests his actual AVG should be higher`)
-    if (b.sprint_speed >= 28.5) reasons.push(`${b.sprint_speed} ft/s speed adds SB upside`)
-    if (b.whiff_pct <= 20 && b.bb_pct >= 8) reasons.push(`solid plate discipline (${b.whiff_pct}% whiff, ${b.bb_pct}% BB) shows mature approach`)
-    if (core.histFpts) {
-      const vals = Object.values(core.histFpts) as number[]
-      if (vals.length >= 2 && vals[vals.length - 1] > vals[vals.length - 2] * 1.15) reasons.push(`FPTS jumped ${Math.round(((vals[vals.length - 1] / vals[vals.length - 2]) - 1) * 100)}% last season — momentum is real`)
-    }
-    const reasonText = reasons.length > 0 ? reasons.join('; ') : 'age, trajectory, and batted-ball quality align'
-    parts.push(`BREAKOUT CANDIDATE: ${reasonText}. Could significantly outperform projections.`)
-  }
-
-  // BSB scoring insight
-  if (core.sb >= 20 && core.hr >= 25) {
-    parts.push(`In BSB scoring, his ${core.hr} HR and ${core.sb} SB combo is gold — total bases + stolen bases create a high weekly floor.`)
-  } else if (core.bb >= 80) {
-    parts.push(`His ${core.bb} projected walks are a hidden gem in BSB scoring where walks count as +1 each — that's ${core.bb} free points most drafters overlook.`)
-  }
-
-  // Final verdict
-  parts.push(`Verdict: ${a.valuation} for BSB drafts.`)
-
-  return parts.join(' ')
-}
-
-function generatePitcherAnalysis(p: PitcherFlat, core: any, a: AnalysisEntry): string {
-  const hist = core.histFpts || {}
-  const histVals = Object.entries(hist).sort(([a],[b]) => a.localeCompare(b))
-  const trendText = histVals.length >= 2
-    ? (histVals[histVals.length-1][1] as number) > (histVals[histVals.length-2][1] as number)
-      ? 'on an upward trajectory'
-      : 'trending downward'
-    : 'with limited track record'
-
-  const parts: string[] = []
-
-  // Lead with most interesting stat
-  if (p.stuff_plus >= 130) {
-    parts.push(`${p.name} has absolutely elite stuff with a ${p.stuff_plus} Stuff+ rating, possessing the kind of pitch arsenal that dominates lineups.`)
-  } else if (p.whiff_pct >= 30) {
-    parts.push(`${p.name} is a swing-and-miss monster at ${p.whiff_pct}% whiff rate, generating strikeouts at an elite clip.`)
-  } else if (p.fb_velo >= 98) {
-    parts.push(`${p.name} brings the heat at ${p.fb_velo} mph average fastball velocity, blowing hitters away with pure gas.`)
-  } else if (p.xera <= 2.5) {
-    parts.push(`${p.name} is a pitching machine with a ${p.xera} xERA that validates his elite run prevention.`)
-  } else if (p.k_pct >= 28 && p.bb_pct <= 5) {
-    parts.push(`${p.name} has an outstanding K-BB profile: ${p.k_pct}% strikeout rate with just ${p.bb_pct}% walks — that's elite command paired with dominance.`)
-  } else if (p.gb_pct >= 52) {
-    parts.push(`${p.name} is a ground ball artist at ${p.gb_pct}% GB rate, keeping the ball on the ground and limiting damage.`)
-  } else {
-    parts.push(`${p.name} projects for ${core.fpts} FPTS this season as a ${core.role} for ${core.team}.`)
-  }
-
-  // xERA vs ERA
-  if (p.xera < core.era - 0.2) {
-    parts.push(`His xERA of ${p.xera} significantly undercuts his projected ${core.era} ERA, suggesting he's been somewhat unlucky or his underlying metrics support better results.`)
-  } else if (p.xera > core.era + 0.25) {
-    parts.push(`Watch out: his xERA of ${p.xera} sits above his projected ${core.era} ERA, meaning some regression could be coming.`)
-  }
-
-  // FIP analysis
-  if (Math.abs(p.fip - core.era) > 0.3) {
-    if (p.fip < core.era) {
-      parts.push(`His ${p.fip} FIP is better than his ERA — a sign that his fielding-independent metrics are strong and he may be due for positive regression.`)
-    } else {
-      parts.push(`His ${p.fip} FIP is worse than his ERA, which could indicate some ERA regression ahead.`)
-    }
-  }
-
-  // Spin and velo
-  if (p.spin_rate >= 2500) {
-    parts.push(`A ${p.spin_rate} RPM spin rate on his fastball generates elite movement and deception.`)
-  }
-  if (p.hard_hit_against <= 28) {
-    parts.push(`Opponents manage just ${p.hard_hit_against}% hard contact against him, reflecting true dominance.`)
-  } else if (p.hard_hit_against >= 38) {
-    parts.push(`A ${p.hard_hit_against}% hard hit rate allowed is concerning and suggests the underlying quality may not match the surface stats.`)
-  }
-
-  // Age / trajectory
-  if (a.age_phase === 'pre-peak') {
-    parts.push(`At just ${p.age}, he's still developing and ${trendText} — there's room to grow.`)
-  } else if (a.age_phase === 'late career') {
-    parts.push(`At ${p.age}, age is a factor, and ${trendText} — velocity and stamina declines are real risks.`)
-  }
-
-  // Breakout with specific explainer
-  if (a.breakout) {
-    const reasons: string[] = []
-    if (a.age_phase === 'pre-peak') reasons.push(`just ${p.age} years old with room to develop`)
-    else if (a.age_phase === 'prime') reasons.push(`entering his prime years at ${p.age}`)
-    if (p.stuff_plus >= 110) reasons.push(`${p.stuff_plus} Stuff+ reflects elite pitch quality`)
-    if (p.whiff_pct >= 28) reasons.push(`${p.whiff_pct}% whiff rate generates swing-and-miss at an elite clip`)
-    if (p.xera <= 3.2) reasons.push(`${p.xera} xERA validates his run prevention`)
-    if (p.fb_velo >= 96) reasons.push(`${p.fb_velo} mph heat is a weapon`)
-    if (p.k_pct >= 27 && p.bb_pct <= 7) reasons.push(`elite K-BB spread (${p.k_pct}% K, ${p.bb_pct}% BB)`)
-    if (core.histFpts) {
-      const vals = Object.values(core.histFpts) as number[]
-      if (vals.length >= 1 && vals[vals.length - 1] >= 500) reasons.push(`already flashed ${vals[vals.length - 1]} FPTS last season`)
-    }
-    const reasonText = reasons.length > 0 ? reasons.join('; ') : 'stuff, age, and trajectory align'
-    parts.push(`BREAKOUT CANDIDATE: ${reasonText}. Prime candidate to take a major leap forward.`)
-  }
-
-  // BSB scoring insight
-  if (core.role === 'SP') {
-    const ipPts = Math.round(core.ip * 3)
-    const kPts = core.so
-    parts.push(`In BSB scoring, his ${core.ip} projected IP (+3 each = ${ipPts} pts) plus ${core.so} K's makes him a ${core.fpts >= 550 ? 'workhorse ace' : 'solid innings eater'}.`)
-  } else {
-    if (core.sv > 0) {
-      const svPts = core.sv * 8
-      parts.push(`As a closer, his ${core.sv} projected saves at +8 each (${svPts} pts) make him extremely valuable in BSB scoring — saves are premium currency.`)
-    } else if (core.hld > 0) {
-      const hldPts = core.hld * 6
-      parts.push(`His ${core.hld} projected holds at +6 each (${hldPts} pts) plus IRSTR bonuses make him a sneaky BSB value as a setup man.`)
-    }
-  }
-
-  parts.push(`Verdict: ${a.valuation} for BSB drafts.`)
-
-  return parts.join(' ')
 }
 
 // ─── Batter Stats Table Columns ─────────────────────
@@ -419,17 +188,13 @@ const GLOSSARY: Record<string, string> = {
 // ─── Main Page Component ────────────────────────────
 export default function AdvancedStatsPage() {
   const [playerType, setPlayerType] = useState<PlayerType>('batters')
-  const [subTab, setSubTab] = useState<SubTab>('stats')
   const [sortKey, setSortKey] = useState<string>('fpts')
   const [sortDir, setSortDir] = useState<SortDir>('desc')
   const [search, setSearch] = useState('')
   const [posFilter, setPosFilter] = useState('All')
   const [showGlossary, setShowGlossary] = useState(false)
-  const [analysisFilter, setAnalysisFilter] = useState<string>('all')
-  const [expandedPlayer, setExpandedPlayer] = useState<string | null>(null)
   const [statYear, setStatYear] = useState<StatYear>('2025')
   const [statsVisible, setStatsVisible] = useState(STATS_PAGE_SIZE)
-  const [analysisVisible, setAnalysisVisible] = useState(ANALYSIS_PAGE_SIZE)
   const searchRef = useRef<HTMLInputElement>(null)
 
   // Keyboard shortcuts
@@ -442,7 +207,6 @@ export default function AdvancedStatsPage() {
       if (e.key === 'Escape') {
         setSearch('')
         setShowGlossary(false)
-        setExpandedPlayer(null)
         searchRef.current?.blur()
       }
     }
@@ -497,66 +261,10 @@ export default function AdvancedStatsPage() {
     return data
   }, [search, posFilter, sortKey, sortDir, statYear])
 
-  // Validate breakout flag at runtime — established ELITE players with high FPTS aren't "breakout" candidates
-  const isValidBreakout = (a: AnalysisEntry, fpts: number): boolean => {
-    if (!a.breakout) return false
-    // Already-established elite stars aren't breakout candidates
-    if (a.value_tag === 'ELITE' && fpts >= 500) return false
-    // Late career / early decline players don't break out
-    if (a.age_phase === 'late career' || a.age_phase === 'early decline') return false
-    return true
-  }
-
-  // Analysis data (always uses 2025)
-  const analysisPlayers = useMemo(() => {
-    const isB = playerType === 'batters'
-    const items = isB ? flattenBatters('2025') : flattenPitchers('2025')
-    let filtered = items.map(p => {
-      const rawAnalysis = analyses[p.id]
-      // Override breakout flag with validated version
-      const analysis = rawAnalysis ? {
-        ...rawAnalysis,
-        breakout: isValidBreakout(rawAnalysis, p.fpts),
-      } : rawAnalysis
-      return {
-        ...p,
-        analysis,
-        core: isB ? batterCore[p.id] : pitcherCore[p.id],
-      }
-    }).filter(p => p.analysis)
-
-    if (search) {
-      const q = search.toLowerCase()
-      filtered = filtered.filter(p => p.name.toLowerCase().includes(q) || p.team.toLowerCase().includes(q))
-    }
-
-    if (posFilter !== 'All') {
-      filtered = filtered.filter(p => isB ? (p as any).pos === posFilter : (p as any).role === posFilter)
-    }
-
-    if (analysisFilter === 'undervalued') {
-      filtered = filtered.filter(p => p.analysis.valuation.includes('UNDER'))
-    } else if (analysisFilter === 'overvalued') {
-      filtered = filtered.filter(p => p.analysis.valuation.includes('OVER'))
-    } else if (analysisFilter === 'breakout') {
-      filtered = filtered.filter(p => p.analysis.breakout)
-    }
-
-    // Sort by FPTS desc by default for analysis
-    filtered.sort((a, b) => b.fpts - a.fpts)
-    return filtered
-  }, [playerType, search, posFilter, analysisFilter])
-
   // Reset pagination when filters change
   useEffect(() => {
     setStatsVisible(STATS_PAGE_SIZE)
-    setAnalysisVisible(ANALYSIS_PAGE_SIZE)
-  }, [playerType, search, posFilter, sortKey, sortDir, statYear, analysisFilter, subTab])
-
-  const navItems = [
-    { id: 'stats', label: 'Stat Tables' },
-    { id: 'analysis', label: 'Player Analysis' },
-  ]
+  }, [playerType, search, posFilter, sortKey, sortDir, statYear])
 
   const cols = playerType === 'batters' ? BATTER_COLS : PITCHER_COLS
   const posFilters = playerType === 'batters' ? BAT_POS_FILTERS : PIT_ROLE_FILTERS
@@ -573,16 +281,6 @@ export default function AdvancedStatsPage() {
             </span>
             <span className="text-[10px] text-bsb-dim group-hover:text-bsb-gold transition-colors">&larr; Back to Draft</span>
           </Link>
-          <div className="hidden md:flex items-center gap-1">
-            {navItems.map(item => (
-              <button key={item.id}
-                onClick={() => setSubTab(item.id as SubTab)}
-                className={`px-2.5 py-1 rounded-full text-[11px] font-semibold transition-all ${
-                  subTab === item.id ? 'bg-bsb-accent/20 text-bsb-accent' : 'text-bsb-dim hover:text-white hover:bg-white/5'
-                }`}
-              >{item.label}</button>
-            ))}
-          </div>
           <div className="flex items-center gap-2">
             <Link href="/guide" className="px-3 py-1.5 text-xs text-bsb-dim hover:text-white hover:bg-white/5 rounded-full transition-all">
               Guide
@@ -605,12 +303,11 @@ export default function AdvancedStatsPage() {
           <div className="text-center py-8">
             <div className="text-[11px] text-bsb-accent font-bold uppercase tracking-widest mb-3">Advanced Analytics Deep Dive</div>
             <h1 className="text-4xl md:text-5xl font-black leading-tight mb-4">
-              Advanced Stats &<br />
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-bsb-accent to-bsb-gold">Player Analysis</span>
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-bsb-accent to-bsb-gold">Advanced Stats</span>
             </h1>
             <p className="text-bsb-dim max-w-2xl mx-auto text-sm leading-relaxed">
-              Statcast metrics, expected stats, plate discipline, pitch quality data, and personalized analysis
-              for every player in the BSB draft pool. Find undervalued gems and avoid overpriced busts.
+              Statcast metrics, expected stats, plate discipline, and pitch quality data
+              for every player in the BSB draft pool.
             </p>
           </div>
         </Section>
@@ -638,33 +335,15 @@ export default function AdvancedStatsPage() {
               </div>
 
               {/* Year selector */}
-              {subTab === 'stats' && (
-                <div className="flex bg-white/[0.04] rounded-lg p-0.5 border border-white/[0.06]">
-                  {YEARS.map(yr => (
-                    <button key={yr}
-                      onClick={() => setStatYear(yr)}
-                      className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all ${
-                        statYear === yr ? 'bg-bsb-gold/20 text-bsb-gold border border-bsb-gold/30' : 'text-bsb-dim hover:text-white'
-                      }`}
-                    >{yr}</button>
-                  ))}
-                </div>
-              )}
-
-              {/* Sub-tab toggle (mobile) */}
-              <div className="flex md:hidden bg-white/[0.04] rounded-lg p-0.5 border border-white/[0.06]">
-                <button
-                  onClick={() => setSubTab('stats')}
-                  className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all ${
-                    subTab === 'stats' ? 'bg-bsb-accent/20 text-bsb-accent' : 'text-bsb-dim'
-                  }`}
-                >Stats</button>
-                <button
-                  onClick={() => setSubTab('analysis')}
-                  className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all ${
-                    subTab === 'analysis' ? 'bg-bsb-accent/20 text-bsb-accent' : 'text-bsb-dim'
-                  }`}
-                >Analysis</button>
+              <div className="flex bg-white/[0.04] rounded-lg p-0.5 border border-white/[0.06]">
+                {YEARS.map(yr => (
+                  <button key={yr}
+                    onClick={() => setStatYear(yr)}
+                    className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all ${
+                      statYear === yr ? 'bg-bsb-gold/20 text-bsb-gold border border-bsb-gold/30' : 'text-bsb-dim hover:text-white'
+                    }`}
+                  >{yr}</button>
+                ))}
               </div>
 
               {/* Position filter */}
@@ -678,27 +357,6 @@ export default function AdvancedStatsPage() {
                   >{p}</button>
                 ))}
               </div>
-
-              {/* Analysis filters (when in analysis mode) */}
-              {subTab === 'analysis' && (
-                <div className="flex items-center gap-1 ml-auto">
-                  {[
-                    { key: 'all', label: 'All', color: 'bsb-dim' },
-                    { key: 'undervalued', label: 'Undervalued', color: 'green-400' },
-                    { key: 'overvalued', label: 'Overvalued', color: 'red-400' },
-                    { key: 'breakout', label: 'Breakout', color: 'yellow-300' },
-                  ].map(f => (
-                    <button key={f.key}
-                      onClick={() => setAnalysisFilter(f.key)}
-                      className={`px-2.5 py-1 rounded text-[11px] font-bold transition-all ${
-                        analysisFilter === f.key
-                          ? `bg-${f.color}/20 text-${f.color} border border-${f.color}/30`
-                          : 'text-bsb-dim hover:text-white hover:bg-white/5'
-                      }`}
-                    >{f.label}</button>
-                  ))}
-                </div>
-              )}
 
               {/* Search */}
               <div className="relative flex-1 min-w-[200px] max-w-xs ml-auto">
@@ -745,8 +403,7 @@ export default function AdvancedStatsPage() {
         {/* ═══════════════════════════════════════ */}
         {/* STATS TABLE VIEW */}
         {/* ═══════════════════════════════════════ */}
-        {subTab === 'stats' && (
-          <Section delay={200}>
+        <Section delay={200}>
             <div className="bg-white/[0.02] rounded-2xl border border-white/[0.06] overflow-hidden">
               <div className="overflow-x-auto">
                 <table className="w-full text-xs">
@@ -769,13 +426,9 @@ export default function AdvancedStatsPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {currentData.slice(0, statsVisible).map((row, i) => {
-                      const a = analyses[row.id]
-                      return (
+                    {currentData.slice(0, statsVisible).map((row, i) => (
                         <tr key={row.id}
-                          className={`border-b border-white/[0.04] hover:bg-white/[0.04] transition-colors ${
-                            a?.breakout ? 'bg-yellow-500/[0.03]' : ''
-                          }`}
+                          className="border-b border-white/[0.04] hover:bg-white/[0.04] transition-colors"
                         >
                           <td className="px-2 py-2 text-bsb-dim sticky left-0 bg-bsb-navy/90 z-10">{i + 1}</td>
                           {cols.map(col => {
@@ -835,12 +488,7 @@ export default function AdvancedStatsPage() {
                                 }`}
                               >
                                 {col.key === 'name' ? (
-                                  <div className="flex items-center gap-1.5">
-                                    <span>{displayVal}</span>
-                                    {a?.breakout && <span className="text-yellow-400 text-[9px]" title="Breakout Candidate">&#9733;</span>}
-                                    {a?.valuation.includes('UNDER') && <span className="text-green-400 text-[9px]" title={a.valuation}>&#9650;</span>}
-                                    {a?.valuation.includes('OVER') && <span className="text-red-400 text-[9px]" title={a.valuation}>&#9660;</span>}
-                                  </div>
+                                  <span>{displayVal}</span>
                                 ) : col.key === 'role' ? (
                                   <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
                                     val === 'SP' ? 'bg-blue-500/20 text-blue-400' : 'bg-orange-500/20 text-orange-400'
@@ -854,8 +502,7 @@ export default function AdvancedStatsPage() {
                             )
                           })}
                         </tr>
-                      )
-                    })}
+                    ))}
                   </tbody>
                 </table>
               </div>
@@ -874,246 +521,6 @@ export default function AdvancedStatsPage() {
               </div>
             </div>
           </Section>
-        )}
-
-        {/* ═══════════════════════════════════════ */}
-        {/* ANALYSIS VIEW */}
-        {/* ═══════════════════════════════════════ */}
-        {subTab === 'analysis' && (
-          <Section delay={200}>
-            <div className="space-y-3">
-              {/* Summary strip */}
-              <div className="flex flex-wrap gap-3 mb-6">
-                <div className="flex-1 min-w-[160px] bg-green-500/[0.06] border border-green-500/20 rounded-xl p-4 text-center">
-                  <div className="text-2xl font-black text-green-400">
-                    {analysisPlayers.filter(p => p.analysis.valuation.includes('UNDER')).length}
-                  </div>
-                  <div className="text-[10px] text-green-400/70 uppercase tracking-wider mt-1">Undervalued</div>
-                </div>
-                <div className="flex-1 min-w-[160px] bg-red-500/[0.06] border border-red-500/20 rounded-xl p-4 text-center">
-                  <div className="text-2xl font-black text-red-400">
-                    {analysisPlayers.filter(p => p.analysis.valuation.includes('OVER')).length}
-                  </div>
-                  <div className="text-[10px] text-red-400/70 uppercase tracking-wider mt-1">Overvalued</div>
-                </div>
-                <div className="flex-1 min-w-[160px] bg-yellow-500/[0.06] border border-yellow-500/20 rounded-xl p-4 text-center">
-                  <div className="text-2xl font-black text-yellow-300">
-                    {analysisPlayers.filter(p => p.analysis.breakout).length}
-                  </div>
-                  <div className="text-[10px] text-yellow-300/70 uppercase tracking-wider mt-1">Breakout Candidates</div>
-                </div>
-                <div className="flex-1 min-w-[160px] bg-white/[0.03] border border-white/[0.06] rounded-xl p-4 text-center">
-                  <div className="text-2xl font-black text-bsb-dim">
-                    {analysisPlayers.filter(p => p.analysis.valuation === 'FAIRLY VALUED').length}
-                  </div>
-                  <div className="text-[10px] text-bsb-dim/70 uppercase tracking-wider mt-1">Fairly Valued</div>
-                </div>
-              </div>
-
-              {/* Player Analysis Cards (paginated) */}
-              {analysisPlayers.slice(0, analysisVisible).map(player => {
-                const isB = playerType === 'batters'
-                const a = player.analysis
-                const core = player.core
-                const expanded = expandedPlayer === player.id
-                const analysisText = isB
-                  ? generateBatterAnalysis(player as any, core, a)
-                  : generatePitcherAnalysis(player as any, core, a)
-
-                return (
-                  <div key={player.id}
-                    className={`rounded-xl border transition-all cursor-pointer ${valuationBg(a.valuation)} ${
-                      expanded ? 'ring-1 ring-bsb-accent/40' : ''
-                    }`}
-                    onClick={() => setExpandedPlayer(expanded ? null : player.id)}
-                  >
-                    {/* Header row */}
-                    <div className="flex items-center gap-3 px-4 py-3">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-bold text-sm text-white">{player.name}</span>
-                          <span className="text-[10px] text-bsb-dim">{player.team}</span>
-                          <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold ${
-                            isB
-                              ? 'bg-blue-500/15 text-blue-400'
-                              : (player as any).role === 'SP' ? 'bg-blue-500/15 text-blue-400' : 'bg-orange-500/15 text-orange-400'
-                          }`}>{isB ? (player as any).pos : (player as any).role}</span>
-                          <span className="text-[10px] text-bsb-dim">Age {player.age}</span>
-                        </div>
-                        <div className="flex items-center gap-2 mt-1">
-                          <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold border ${tierBadge(a.value_tag)}`}>
-                            {a.value_tag}
-                          </span>
-                          <span className={`text-[10px] font-bold ${valuationColor(a.valuation)}`}>
-                            {a.valuation}
-                          </span>
-                          {a.breakout && (
-                            <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-yellow-500/20 text-yellow-300 border border-yellow-500/30">
-                              BREAKOUT
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <div className="text-lg font-black text-bsb-gold">{player.fpts}</div>
-                        <div className="text-[9px] text-bsb-dim uppercase">FPTS</div>
-                      </div>
-                      <div className="text-bsb-dim text-xs ml-2">
-                        {expanded ? '\u25B2' : '\u25BC'}
-                      </div>
-                    </div>
-
-                    {/* Expanded content */}
-                    {expanded && (
-                      <div className="px-4 pb-4 border-t border-white/[0.06]">
-                        {/* Key stats mini-grid */}
-                        <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 mt-3 mb-4">
-                          {isB ? (
-                            <>
-                              <MiniStat label="EV" value={`${(player as any).exit_velo}`} color={pctColor((player as any).exit_velo, 87, 89, 92)} />
-                              <MiniStat label="Barrel%" value={`${(player as any).barrel_pct}`} color={pctColor((player as any).barrel_pct, 5, 8, 12)} />
-                              <MiniStat label="HardHit%" value={`${(player as any).hard_hit_pct}`} color={pctColor((player as any).hard_hit_pct, 32, 38, 44)} />
-                              <MiniStat label="xBA" value={(player as any).xba.toFixed(3)} color={pctColor((player as any).xba, 0.230, 0.255, 0.280)} />
-                              <MiniStat label="BABIP" value={(player as any).babip.toFixed(3)} color="text-white" />
-                              <MiniStat label="wRC+" value={`${(player as any).wrc_plus}`} color={pctColor((player as any).wrc_plus, 90, 110, 130)} />
-                            </>
-                          ) : (
-                            <>
-                              <MiniStat label="Velo" value={`${(player as any).fb_velo}`} color={pctColor((player as any).fb_velo, 92, 95, 97)} />
-                              <MiniStat label="Whiff%" value={`${(player as any).whiff_pct}`} color={pctColor((player as any).whiff_pct, 20, 25, 30)} />
-                              <MiniStat label="Stuff+" value={`${(player as any).stuff_plus}`} color={pctColor((player as any).stuff_plus, 90, 105, 120)} />
-                              <MiniStat label="xERA" value={(player as any).xera.toFixed(2)} color={pctColor((player as any).xera, 3.0, 3.5, 4.2, true)} />
-                              <MiniStat label="FIP" value={(player as any).fip.toFixed(2)} color={pctColor((player as any).fip, 3.0, 3.5, 4.2, true)} />
-                              <MiniStat label="K%" value={`${(player as any).k_pct}`} color={pctColor((player as any).k_pct, 20, 25, 30)} />
-                            </>
-                          )}
-                        </div>
-
-                        {/* Analysis paragraph */}
-                        <div className="bg-white/[0.03] rounded-lg p-4 border border-white/[0.06]">
-                          <div className="text-[10px] text-bsb-accent font-bold uppercase tracking-wider mb-2">Analysis</div>
-                          <p className="text-sm text-white/90 leading-relaxed">{analysisText}</p>
-                        </div>
-
-                        {/* Breakout explainer callout */}
-                        {a.breakout && (
-                          <div className="mt-3 bg-yellow-500/[0.06] border border-yellow-500/20 rounded-lg p-3">
-                            <div className="flex items-center gap-2 mb-1.5">
-                              <span className="text-yellow-300 text-sm">&#9733;</span>
-                              <span className="text-[10px] text-yellow-300 font-bold uppercase tracking-wider">Why Breakout Candidate?</span>
-                            </div>
-                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-[11px]">
-                              {a.age_phase === 'pre-peak' && (
-                                <div className="flex items-center gap-1.5">
-                                  <span className="text-green-400">&#10003;</span>
-                                  <span className="text-white/80">Pre-peak age ({player.age})</span>
-                                </div>
-                              )}
-                              {a.age_phase === 'prime' && (
-                                <div className="flex items-center gap-1.5">
-                                  <span className="text-green-400">&#10003;</span>
-                                  <span className="text-white/80">Prime age ({player.age})</span>
-                                </div>
-                              )}
-                              {isB && (player as any).hard_hit_pct >= 38 && (
-                                <div className="flex items-center gap-1.5">
-                                  <span className="text-green-400">&#10003;</span>
-                                  <span className="text-white/80">Hard hit {(player as any).hard_hit_pct}%</span>
-                                </div>
-                              )}
-                              {isB && (player as any).barrel_pct >= 8 && (
-                                <div className="flex items-center gap-1.5">
-                                  <span className="text-green-400">&#10003;</span>
-                                  <span className="text-white/80">Barrel rate {(player as any).barrel_pct}%</span>
-                                </div>
-                              )}
-                              {isB && (player as any).sprint_speed >= 28.5 && (
-                                <div className="flex items-center gap-1.5">
-                                  <span className="text-green-400">&#10003;</span>
-                                  <span className="text-white/80">Speed {(player as any).sprint_speed} ft/s</span>
-                                </div>
-                              )}
-                              {!isB && (player as any).stuff_plus >= 110 && (
-                                <div className="flex items-center gap-1.5">
-                                  <span className="text-green-400">&#10003;</span>
-                                  <span className="text-white/80">Stuff+ {(player as any).stuff_plus}</span>
-                                </div>
-                              )}
-                              {!isB && (player as any).whiff_pct >= 28 && (
-                                <div className="flex items-center gap-1.5">
-                                  <span className="text-green-400">&#10003;</span>
-                                  <span className="text-white/80">Whiff rate {(player as any).whiff_pct}%</span>
-                                </div>
-                              )}
-                              {!isB && (player as any).fb_velo >= 96 && (
-                                <div className="flex items-center gap-1.5">
-                                  <span className="text-green-400">&#10003;</span>
-                                  <span className="text-white/80">Velo {(player as any).fb_velo} mph</span>
-                                </div>
-                              )}
-                              {core.histFpts && (() => {
-                                const vals = Object.values(core.histFpts) as number[]
-                                return vals.length >= 2 && vals[vals.length - 1] > vals[vals.length - 2] * 1.1
-                              })() && (
-                                <div className="flex items-center gap-1.5">
-                                  <span className="text-green-400">&#10003;</span>
-                                  <span className="text-white/80">Trending up YoY</span>
-                                </div>
-                              )}
-                              {a.valuation.includes('UNDER') && (
-                                <div className="flex items-center gap-1.5">
-                                  <span className="text-green-400">&#10003;</span>
-                                  <span className="text-white/80">Currently undervalued</span>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Historical FPTS */}
-                        {core.histFpts && Object.keys(core.histFpts).length > 0 && (
-                          <div className="mt-3 flex items-center gap-3">
-                            <span className="text-[10px] text-bsb-dim uppercase tracking-wider">History:</span>
-                            {Object.entries(core.histFpts).sort(([a],[b]) => a.localeCompare(b)).map(([yr, val]) => (
-                              <div key={yr} className="flex items-center gap-1">
-                                <span className="text-[10px] text-bsb-dim">{yr}:</span>
-                                <span className="text-xs font-bold text-white">{String(val)}</span>
-                              </div>
-                            ))}
-                            <span className="text-[10px] text-bsb-dim">|</span>
-                            <div className="flex items-center gap-1">
-                              <span className="text-[10px] text-bsb-gold uppercase">2025 Proj:</span>
-                              <span className="text-xs font-bold text-bsb-gold">{core.fpts}</span>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                )
-              })}
-
-              {/* Load more button for analysis */}
-              {analysisVisible < analysisPlayers.length && (
-                <div className="flex justify-center pt-4">
-                  <button
-                    onClick={() => setAnalysisVisible(v => v + ANALYSIS_PAGE_SIZE)}
-                    className="px-6 py-2 bg-bsb-accent/20 border border-bsb-accent/40 rounded-full text-xs font-bold text-bsb-accent hover:bg-bsb-accent/30 transition-all"
-                  >
-                    Load {Math.min(ANALYSIS_PAGE_SIZE, analysisPlayers.length - analysisVisible)} more players
-                    <span className="text-bsb-dim ml-2">({analysisPlayers.length - analysisVisible} remaining)</span>
-                  </button>
-                </div>
-              )}
-
-              {analysisPlayers.length === 0 && (
-                <div className="text-center py-12 text-bsb-dim">
-                  No players match your filters.
-                </div>
-              )}
-            </div>
-          </Section>
-        )}
 
         {/* ═══════════════════════════════════════ */}
         {/* FOOTER */}
@@ -1131,16 +538,6 @@ export default function AdvancedStatsPage() {
           </div>
         </Section>
       </div>
-    </div>
-  )
-}
-
-// ─── Mini Stat Component ────────────────────────────
-function MiniStat({ label, value, color }: { label: string; value: string; color: string }) {
-  return (
-    <div className="bg-white/[0.04] rounded-lg p-2 text-center border border-white/[0.06]">
-      <div className={`text-sm font-black ${color}`}>{value}</div>
-      <div className="text-[9px] text-bsb-dim uppercase tracking-wider mt-0.5">{label}</div>
     </div>
   )
 }

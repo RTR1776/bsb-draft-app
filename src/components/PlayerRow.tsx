@@ -4,7 +4,7 @@ import { PosBadge } from './PosBadge'
 import { GRID_COLS, tierRowBg, teamAbbrev } from './constants'
 
 export function PlayerRow({
-  player, rank, onDraft, onUndraft, onRightClick, onNameClick, showRole, isRecommended, recRank, pana, prevTier, hasNews, newsSeverity, myTeamNumber
+  player, rank, onDraft, onUndraft, onRightClick, onNameClick, showRole, isRecommended, recRank, pana, prevTier, hasNews, newsSeverity, myTeamNumber, battingOrder, rotationNumber
 }: {
   player: Player; rank: number
   onDraft: (id: string) => void
@@ -19,6 +19,8 @@ export function PlayerRow({
   hasNews?: boolean
   newsSeverity?: 'high' | 'medium' | 'low'
   myTeamNumber?: number | null
+  battingOrder?: number
+  rotationNumber?: number
 }) {
   const myNum = myTeamNumber ?? 0
   const isPitcher = player.pos === 'P'
@@ -78,6 +80,16 @@ export function PlayerRow({
           onClick={(e) => { e.stopPropagation(); onNameClick(player) }}
           title="View player card"
         >{player.name}</span>
+        {!player.drafted && battingOrder !== undefined && (
+          <span className="text-[9px] px-1 rounded bg-amber-500/15 text-amber-400/80 font-bold shrink-0 tabular-nums" title={`Projected batting ${battingOrder} spot`}>
+            🏏{battingOrder}
+          </span>
+        )}
+        {!player.drafted && rotationNumber !== undefined && (
+          <span className="text-[9px] px-1 rounded bg-sky-500/15 text-sky-400/80 font-bold shrink-0 tabular-nums" title={`Projected #${rotationNumber} starter`}>
+            ⚾{rotationNumber}
+          </span>
+        )}
         {isRecommended && !player.drafted && (
           <span className="text-[8px] px-1 rounded bg-bsb-gold/20 text-bsb-gold font-bold shrink-0">REC</span>
         )}

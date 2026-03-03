@@ -18,6 +18,7 @@ import { TeamSelector } from '@/components/TeamSelector'
 import { useNewsStore } from '@/hooks/useNewsStore'
 import { NewsFeed } from '@/components/NewsFeed'
 import { MyPicksPanel } from '@/components/MyPicksPanel'
+import openingDayData from '@/data/openingDay.json'
 
 // ─────────────────────────────────────────
 // MAIN APP
@@ -461,6 +462,8 @@ export default function Home() {
                 hasNews={newsStore.hasNewsForPlayer(player.id)}
                 newsSeverity={newsStore.topSeverityForPlayer(player.id)}
                 myTeamNumber={myNum}
+                battingOrder={player.pos !== 'P' ? (openingDayData.battingOrder as Record<string, number>)[player.name] : undefined}
+                rotationNumber={player.pos === 'P' ? (openingDayData.rotation as Record<string, number>)[player.name] : undefined}
               />
             ))}
             {displayPlayers.length === 0 && (
