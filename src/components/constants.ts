@@ -81,4 +81,4 @@ export function tierBadge(tier?: number): string {
 
 // CSS grid template
 // #(28) POS(40) NAME(flex) TM(36) FPTS(42) TWV(46) CONS(32) VORP(42) | 14x(minmax 36px/1fr) | TAG(40px)
-export const GRID_COLS = '[rank]28px [pos]40px [name]1fr [team]36px [fpts]42px [twv]46px [cons]32px [vorp]42px repeat(14, minmax(36px, 1fr)) [tag]40px'
+export const GRID_COLS = '[rank]32px [pos]48px [name]1.5fr [team]48px [fpts]48px [twv]48px [cons]44px [vorp]48px repeat(14, minmax(44px, 1fr)) [tag]48px'

@@ -13,8 +13,7 @@ import { CategorySelector } from '@/components/CategorySelector'
 import { DashboardStrip } from '@/components/DashboardStrip'
 import { TeamContextMenu } from '@/components/TeamContextMenu'
 import { ScarcityBar } from '@/components/ScarcityBar'
-import { MyTeamPositionGrid } from '@/components/TeamPanels'
-import { AllTeamsRoster } from '@/components/AllTeamsRoster'
+import { MyTeamPositionGrid, AllTeamsPanel } from '@/components/TeamPanels'
 import { TeamSelector } from '@/components/TeamSelector'
 import { useNewsStore } from '@/hooks/useNewsStore'
 import { NewsFeed } from '@/components/NewsFeed'
@@ -403,7 +402,7 @@ export default function Home() {
             {/* Player list header — same grid as rows */}
             <div className="bg-bsb-dark/95 backdrop-blur-md border-b border-white/10 sticky top-0 z-20 shadow-lg">
               <div
-                className="grid items-center px-2 py-1 text-[10px] text-bsb-dim uppercase tracking-wider font-mono max-w-[1050px] mx-auto w-full tabular-nums"
+                className="grid items-center px-4 py-1.5 text-xs text-bsb-dim uppercase tracking-wider font-mono w-full tabular-nums"
                 style={{ gridTemplateColumns: GRID_COLS }}
               >
                 <span className="text-right">#</span>
@@ -472,7 +471,7 @@ export default function Home() {
               </div>
             </div>
 
-            <div className="max-w-[1050px] mx-auto w-full pb-4">
+            <div className="w-full px-4 pb-12">
               {displayPlayers.map((player, i) => (
                 <PlayerRow
                   key={player.id} player={player} rank={i + 1}
@@ -604,7 +603,7 @@ export default function Home() {
 
             {/* ALL TEAMS TAB */}
             {rightPanel === 'allteams' && (
-              <AllTeamsRoster allPlayers={store.allPlayers} />
+              <AllTeamsPanel allPlayers={store.allPlayers} onUndraft={store.undraftPlayer} />
             )}
 
             {/* NEWS TAB */}

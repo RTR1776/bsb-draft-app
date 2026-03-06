@@ -71,7 +71,7 @@ export function PlayerRow({
 
   return (
     <div
-      className={`player-row grid items-center px-1 py-1 tabular-nums text-[12px] lg:text-[13px] font-mono max-w-[1050px] mx-auto w-full group hover:bg-white/5 transition-colors cursor-pointer ${player.drafted ? 'drafted' : ''
+      className={`player-row grid items-center px-4 py-1.5 tabular-nums text-sm font-mono w-full group hover:bg-white/5 transition-colors cursor-pointer ${player.drafted ? 'drafted' : ''
         } ${tierBg} ${recBorder} ${rank % 2 === 0 && !tierBg ? 'bg-white/[0.02]' : ''} ${showTierDivider ? 'border-t border-white/10' : ''}`}
       style={{ gridTemplateColumns: GRID_COLS }}
       onClick={() => player.drafted ? onUndraft(player.id) : onDraft(player.id)}
@@ -95,7 +95,7 @@ export function PlayerRow({
       {/* Name + rec badge — clicking the name opens the player card */}
       <span className={`text-sm truncate min-w-0 pr-1 flex items-center gap-1 ${player.drafted ? 'text-bsb-dim' : 'text-white'}`} style={{ fontFamily: 'inherit' }}>
         {hasNews && !player.drafted && (
-          <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${newsSeverity === 'high' ? 'bg-red-400 animate-pulse' :
+          <span className={`w-2 h-2 rounded-full shrink-0 ${newsSeverity === 'high' ? 'bg-red-400' :
             newsSeverity === 'medium' ? 'bg-orange-400' : 'bg-blue-400'
             }`} title="Has recent news" />
         )}
@@ -105,35 +105,33 @@ export function PlayerRow({
           title="View player card"
         >{player.name}</span>
         {!player.drafted && battingOrder !== undefined && (
-          <span className="text-[9px] px-1 rounded bg-amber-500/15 text-amber-400/80 font-bold shrink-0 tabular-nums" title={`Projected batting ${battingOrder} spot`}>
+          <span className="text-[10px] px-1 rounded bg-amber-500/15 text-amber-400/80 font-bold shrink-0 tabular-nums" title={`Projected batting ${battingOrder} spot`}>
             🏏{battingOrder}
           </span>
         )}
         {!player.drafted && rotationNumber !== undefined && (
-          <span className="text-[9px] px-1 rounded bg-sky-500/15 text-sky-400/80 font-bold shrink-0 tabular-nums" title={`Projected #${rotationNumber} starter`}>
+          <span className="text-[10px] px-1 rounded bg-sky-500/15 text-sky-400/80 font-bold shrink-0 tabular-nums" title={`Projected #${rotationNumber} starter`}>
             ⚾{rotationNumber}
           </span>
         )}
         {isRecommended && !player.drafted && (
-          <span className="text-[8px] px-1 rounded bg-bsb-gold/20 text-bsb-gold font-bold shrink-0">REC</span>
+          <span className="text-[10px] px-1.5 rounded bg-bsb-gold/20 text-bsb-gold font-bold shrink-0">REC</span>
         )}
         {pana >= 20 && !player.drafted && !isRecommended && (
-          <span className="text-[8px] px-1 text-red-400 font-bold shrink-0" title={`${pana}pt drop-off to next`}>▼</span>
+          <span className="text-[10px] px-1 text-red-400 font-bold shrink-0" title={`${pana}pt drop-off to next`}>▼</span>
         )}
       </span>
       {/* Team */}
-      <span className="text-[10px] text-bsb-dim text-center">{player.team}</span>
+      <span className="text-[11px] text-bsb-dim text-center">{player.team}</span>
       {/* FPTS */}
-      <span className={`text-right text-xs font-bold transition-all ${player.drafted ? 'text-bsb-dim font-normal' :
-        (pana >= 20 && !isRecommended) ? 'text-red-400 bg-red-500/20 animate-pulse rounded drop-shadow-[0_0_8px_rgba(248,113,113,0.5)]' : 'text-bsb-gold'
-        }`}>
+      <span className={`text-right text-[15px] font-bold transition-all ${player.drafted ? 'text-white/20 font-normal' : 'text-bsb-gold'}`}>
         {player.fpts}
       </span>
       {/* TWV and CONS */}
-      <span className={`text-right text-[11px] font-bold ${player.drafted ? 'text-white/15' : 'text-sky-400'}`} title={`TWV Delta: ${player.twvDelta && player.twvDelta > 0 ? '+' : ''}${player.twvDelta || 0}`}>
+      <span className={`text-right text-[13px] font-bold ${player.drafted ? 'text-white/15' : 'text-sky-400'}`} title={`TWV Delta: ${player.twvDelta && player.twvDelta > 0 ? '+' : ''}${player.twvDelta || 0}`}>
         {player.twv ? player.twv.toFixed(1) : player.fpts}
       </span>
-      <span className={`text-center text-[10px] font-bold ${player.drafted ? 'text-white/15' :
+      <span className={`text-center text-xs font-bold ${player.drafted ? 'text-white/15' :
         player.consistencyGrade === 'A' ? 'text-yellow-400' :
           player.consistencyGrade === 'B' ? 'text-emerald-400' :
             player.consistencyGrade === 'C' ? 'text-white/50' :
@@ -143,7 +141,7 @@ export function PlayerRow({
         {player.consistencyGrade || '—'}
       </span>
       {/* VORP */}
-      <span className={`text-right text-[10px] font-bold ${player.drafted ? 'text-white/15' : vorpColor}`}>
+      <span className={`text-right text-xs font-bold ${player.drafted ? 'text-white/15' : vorpColor}`}>
         {(player.vorp || 0) > 0 ? `+${Math.round(player.vorp || 0)}` : Math.round(player.vorp || 0)}
       </span>
       {/* 14 dynamic columns */}
