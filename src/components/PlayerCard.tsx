@@ -107,9 +107,8 @@ function StatLine({ label, value, multiplier, suffix }: {
       <span className="text-[11px] text-bsb-dim w-12">{label}</span>
       <span className="text-[11px] text-white/70 font-mono w-10 text-right">{typeof value === 'number' ? (suffix ? value.toFixed(1) : Math.round(value)) : '—'}</span>
       <span className="text-[9px] text-white/30 w-6 text-center">×{Math.abs(multiplier)}</span>
-      <span className={`text-[11px] font-mono font-bold w-12 text-right ${
-        isNeg ? 'text-red-400/80' : pts > 0 ? 'text-green-400/80' : 'text-white/25'
-      }`}>
+      <span className={`text-[11px] font-mono font-bold w-12 text-right ${isNeg ? 'text-red-400/80' : pts > 0 ? 'text-green-400/80' : 'text-white/25'
+        }`}>
         {isNeg && pts !== 0 ? '' : '+'}{pts.toFixed(0)}{suffix || ''}
       </span>
     </div>
@@ -185,10 +184,9 @@ export function PlayerCard({
     >
       <div className="bg-bsb-dark border border-white/15 rounded-xl shadow-2xl shadow-black/50 w-[520px] max-h-[90vh] overflow-y-auto">
         {/* ── HEADER ── */}
-        <div className={`relative px-5 pt-5 pb-4 rounded-t-xl ${
-          player.tier === 1 ? 'bg-gradient-to-br from-yellow-900/30 to-transparent' :
-          player.tier === 2 ? 'bg-gradient-to-br from-blue-900/20 to-transparent' : ''
-        }`}>
+        <div className={`relative px-5 pt-5 pb-4 rounded-t-xl ${player.tier === 1 ? 'bg-gradient-to-br from-yellow-900/30 to-transparent' :
+            player.tier === 2 ? 'bg-gradient-to-br from-blue-900/20 to-transparent' : ''
+          }`}>
           {/* Close button */}
           <button
             onClick={onClose}
@@ -265,32 +263,29 @@ export function PlayerCard({
           {/* Profile badges: injury, consistency, age curve */}
           <div className="flex items-center gap-1.5 mt-2 flex-wrap">
             {player.injuryFlag && player.injuryFlag !== 'HEALTHY' && (
-              <span className={`text-[9px] px-1.5 py-0.5 rounded border font-bold ${
-                player.injuryFlag === 'SEVERE' ? 'bg-red-500/20 text-red-400 border-red-500/40' :
-                player.injuryFlag === 'MODERATE' ? 'bg-orange-500/20 text-orange-400 border-orange-500/40' :
-                'bg-yellow-500/20 text-yellow-400 border-yellow-500/40'
-              }`}>
+              <span className={`text-[9px] px-1.5 py-0.5 rounded border font-bold ${player.injuryFlag === 'SEVERE' ? 'bg-red-500/20 text-red-400 border-red-500/40' :
+                  player.injuryFlag === 'MODERATE' ? 'bg-orange-500/20 text-orange-400 border-orange-500/40' :
+                    'bg-yellow-500/20 text-yellow-400 border-yellow-500/40'
+                }`}>
                 {player.injuryFlag === 'SEVERE' ? '⚠ INJURY RISK' :
-                 player.injuryFlag === 'MODERATE' ? '⚠ INJURY PRONE' : 'MINOR INJ'}
+                  player.injuryFlag === 'MODERATE' ? '⚠ INJURY PRONE' : 'MINOR INJ'}
               </span>
             )}
             {player.consistencyGrade && (
-              <span className={`text-[9px] px-1.5 py-0.5 rounded border font-bold ${
-                player.consistencyGrade === 'A' ? 'bg-green-500/20 text-green-400 border-green-500/40' :
-                player.consistencyGrade === 'B' ? 'bg-blue-500/20 text-blue-300 border-blue-500/40' :
-                player.consistencyGrade === 'C' ? 'bg-white/10 text-white/50 border-white/20' :
-                'bg-red-500/10 text-red-400/70 border-red-500/30'
-              }`}>
+              <span className={`text-[9px] px-1.5 py-0.5 rounded border font-bold ${player.consistencyGrade === 'A' ? 'bg-green-500/20 text-green-400 border-green-500/40' :
+                  player.consistencyGrade === 'B' ? 'bg-blue-500/20 text-blue-300 border-blue-500/40' :
+                    player.consistencyGrade === 'C' ? 'bg-white/10 text-white/50 border-white/20' :
+                      'bg-red-500/10 text-red-400/70 border-red-500/30'
+                }`}>
                 CON: {player.consistencyGrade}
               </span>
             )}
             {player.ageCurve && (
-              <span className={`text-[9px] px-1.5 py-0.5 rounded border font-bold ${
-                player.ageCurve === 'Peak' ? 'bg-green-500/10 text-green-400/70 border-green-500/20' :
-                player.ageCurve === 'Pre-Peak' ? 'bg-blue-500/10 text-blue-300/70 border-blue-500/20' :
-                player.ageCurve === 'Declining' ? 'bg-orange-500/10 text-orange-400/70 border-orange-500/20' :
-                'bg-red-500/10 text-red-400/70 border-red-500/20'
-              }`}>
+              <span className={`text-[9px] px-1.5 py-0.5 rounded border font-bold ${player.ageCurve === 'Peak' ? 'bg-green-500/10 text-green-400/70 border-green-500/20' :
+                  player.ageCurve === 'Pre-Peak' ? 'bg-blue-500/10 text-blue-300/70 border-blue-500/20' :
+                    player.ageCurve === 'Declining' ? 'bg-orange-500/10 text-orange-400/70 border-orange-500/20' :
+                      'bg-red-500/10 text-red-400/70 border-red-500/20'
+                }`}>
                 {player.ageCurve}
               </span>
             )}
@@ -304,9 +299,8 @@ export function PlayerCard({
               <div className="text-[10px] text-bsb-dim uppercase tracking-wider">BSB Fantasy Points</div>
               <div className="text-3xl font-black text-bsb-gold leading-tight">{player.fpts}</div>
               {trend !== undefined && (
-                <div className={`text-[11px] font-bold mt-0.5 ${
-                  trend > 0 ? 'text-green-400' : trend < 0 ? 'text-red-400' : 'text-bsb-dim'
-                }`}>
+                <div className={`text-[11px] font-bold mt-0.5 ${trend > 0 ? 'text-green-400' : trend < 0 ? 'text-red-400' : 'text-bsb-dim'
+                  }`}>
                   {trend > 0 ? '▲' : trend < 0 ? '▼' : '—'} {Math.abs(Math.round(trend))} pts vs {lastActualYear} actual
                 </div>
               )}
@@ -314,17 +308,15 @@ export function PlayerCard({
             <div className="flex gap-4 text-center">
               <div>
                 <div className="text-[10px] text-bsb-dim uppercase">VORP</div>
-                <div className={`text-lg font-black ${
-                  (player.vorp || 0) > 30 ? 'text-green-400' : (player.vorp || 0) > 10 ? 'text-yellow-400' : 'text-white/30'
-                }`}>
+                <div className={`text-lg font-black ${(player.vorp || 0) > 30 ? 'text-green-400' : (player.vorp || 0) > 10 ? 'text-yellow-400' : 'text-white/30'
+                  }`}>
                   {(player.vorp || 0) > 0 ? `+${Math.round(player.vorp || 0)}` : Math.round(player.vorp || 0)}
                 </div>
               </div>
               <div>
                 <div className="text-[10px] text-bsb-dim uppercase">PANA</div>
-                <div className={`text-lg font-black ${
-                  pana >= 20 ? 'text-red-400' : pana >= 10 ? 'text-orange-400' : 'text-white/40'
-                }`}>
+                <div className={`text-lg font-black ${pana >= 20 ? 'text-red-400' : pana >= 10 ? 'text-orange-400' : 'text-white/40'
+                  }`}>
                   {pana > 0 ? `+${pana}` : pana}
                 </div>
               </div>
@@ -350,10 +342,9 @@ export function PlayerCard({
                 <div className="text-2xl font-black text-white/40">{player.fpts}</div>
                 <div className="text-[9px] text-bsb-dim">Steamer</div>
               </div>
-              <div className={`text-sm font-bold ml-1 ${
-                (player.bsbDelta || 0) > 0 ? 'text-green-400' :
-                (player.bsbDelta || 0) < 0 ? 'text-red-400' : 'text-white/30'
-              }`}>
+              <div className={`text-sm font-bold ml-1 ${(player.bsbDelta || 0) > 0 ? 'text-green-400' :
+                  (player.bsbDelta || 0) < 0 ? 'text-red-400' : 'text-white/30'
+                }`}>
                 {(player.bsbDelta || 0) > 0 ? '+' : ''}{player.bsbDelta}
               </div>
               <div className="ml-auto text-right">
@@ -375,7 +366,7 @@ export function PlayerCard({
         </div>
 
         {/* ── DURABILITY & CONSISTENCY ── */}
-        {(player.gamesPlayed || player.weeklyCV != null) && (
+        {(player.gamesPlayed || player.cv != null) && (
           <div className="px-5 py-3 border-t border-white/10">
             <div className="text-[10px] text-bsb-dim uppercase tracking-wider mb-2">Durability & Consistency</div>
             {player.gamesPlayed && (
@@ -402,10 +393,10 @@ export function PlayerCard({
               </div>
             )}
             <div className="flex items-center gap-4">
-              {player.weeklyCV != null && (
-                <div>
-                  <div className="text-[9px] text-bsb-dim">Weekly CV</div>
-                  <div className="text-sm font-bold text-white/70">{player.weeklyCV.toFixed(2)}</div>
+              {player.cv != null && (
+                <div className="bg-bsb-dark/60 p-2 rounded 2xl:col-span-1">
+                  <div className="text-[10px] text-bsb-dim mb-1 font-bold">Variability (CV)</div>
+                  <div className="text-sm font-bold text-white/70">{player.cv.toFixed(2)}</div>
                 </div>
               )}
               {player.weeklyMean != null && (
@@ -417,22 +408,20 @@ export function PlayerCard({
               {player.consistencyGrade && (
                 <div>
                   <div className="text-[9px] text-bsb-dim">Consistency</div>
-                  <div className={`text-sm font-bold ${
-                    player.consistencyGrade === 'A' ? 'text-green-400' :
-                    player.consistencyGrade === 'B' ? 'text-blue-300' :
-                    player.consistencyGrade === 'C' ? 'text-white/50' :
-                    'text-red-400/70'
-                  }`}>{player.consistencyGrade}</div>
+                  <div className={`text-sm font-bold ${player.consistencyGrade === 'A' ? 'text-green-400' :
+                      player.consistencyGrade === 'B' ? 'text-blue-300' :
+                        player.consistencyGrade === 'C' ? 'text-white/50' :
+                          'text-red-400/70'
+                    }`}>{player.consistencyGrade}</div>
                 </div>
               )}
               {player.healthPct != null && (
                 <div>
                   <div className="text-[9px] text-bsb-dim">Health</div>
-                  <div className={`text-sm font-bold ${
-                    player.healthPct >= 0.9 ? 'text-green-400' :
-                    player.healthPct >= 0.75 ? 'text-yellow-400' :
-                    'text-red-400'
-                  }`}>{Math.round(player.healthPct * 100)}%</div>
+                  <div className={`text-sm font-bold ${player.healthPct >= 0.9 ? 'text-green-400' :
+                      player.healthPct >= 0.75 ? 'text-yellow-400' :
+                        'text-red-400'
+                    }`}>{Math.round(player.healthPct * 100)}%</div>
                 </div>
               )}
             </div>
@@ -576,10 +565,9 @@ export function PlayerCard({
             <div className="space-y-1.5 max-h-40 overflow-y-auto">
               {playerNews.slice(0, 5).map((item) => (
                 <div key={item.id} className="flex items-start gap-2 text-[11px]">
-                  <span className={`w-1.5 h-1.5 rounded-full shrink-0 mt-1 ${
-                    item.severity === 'high' ? 'bg-red-400' :
-                    item.severity === 'medium' ? 'bg-orange-400' : 'bg-blue-400'
-                  }`} />
+                  <span className={`w-1.5 h-1.5 rounded-full shrink-0 mt-1 ${item.severity === 'high' ? 'bg-red-400' :
+                      item.severity === 'medium' ? 'bg-orange-400' : 'bg-blue-400'
+                    }`} />
                   <div className="min-w-0 flex-1">
                     <div className="text-white/80 leading-snug">{item.headline}</div>
                     <div className="flex items-center gap-2 mt-0.5 text-[9px] text-white/25">

@@ -13,7 +13,8 @@ import { CategorySelector } from '@/components/CategorySelector'
 import { DashboardStrip } from '@/components/DashboardStrip'
 import { TeamContextMenu } from '@/components/TeamContextMenu'
 import { ScarcityBar } from '@/components/ScarcityBar'
-import { MyTeamPositionGrid, AllTeamsPanel } from '@/components/TeamPanels'
+import { MyTeamPositionGrid } from '@/components/TeamPanels'
+import { AllTeamsRoster } from '@/components/AllTeamsRoster'
 import { TeamSelector } from '@/components/TeamSelector'
 import { useNewsStore } from '@/hooks/useNewsStore'
 import { NewsFeed } from '@/components/NewsFeed'
@@ -461,56 +462,60 @@ export default function Home() {
                 <span>Player</span>
                 <span className="text-center">Tm</span>
                 <SortHeader label="Pts" sortKey="fpts" className="text-bsb-gold hover:text-bsb-gold/80" />
+                <SortHeader label="TWV" sortKey="twv" className="text-sky-400/80 hover:text-sky-400" />
+                <SortHeader label="Cons" sortKey="consistencyScore" className="text-white/50 hover:text-white/80" />
                 <SortHeader label="VORP" sortKey="vorp" className="text-green-400/60 hover:text-green-400/80" />
-                {/* 5 scoring columns — switch labels based on header mode */}
+                {/* 14 dynamic columns */}
                 {headerMode === 'pitcher' ? (
                   <>
                     <SortHeader label="IP" sortKey="ip" />
-                    <SortHeader label="K" sortKey="so" />
                     <SortHeader label="W" sortKey="w" />
                     <SortHeader label="SV" sortKey="sv" />
                     <SortHeader label="HLD" sortKey="hld" />
+                    <SortHeader label="K" sortKey="so" />
+                    <SortHeader label="CG" sortKey="cg" />
+                    <SortHeader label="IRS" sortKey="irstr" />
+                    <SortHeader label="Velo" sortKey="fb_velo" />
+                    <SortHeader label="Stuff+" sortKey="stuff_plus" />
+                    <SortHeader label="Loc+" sortKey="location_plus" />
+                    <SortHeader label="xERA" sortKey="xera" />
+                    <SortHeader label="HH%" sortKey="hard_hit_against" />
+                    <SortHeader label="BRL%" sortKey="barrel_against" />
+                    <SortHeader label="Chase%" sortKey="chase_rate" />
                   </>
                 ) : headerMode === 'batter' ? (
                   <>
+                    <SortHeader label="PA" sortKey="pa" />
+                    <SortHeader label="AVG" sortKey="avg" />
                     <SortHeader label="R" sortKey="r" />
-                    <SortHeader label="TB" sortKey="tb" />
                     <SortHeader label="BB" sortKey="bb" />
+                    <SortHeader label="HR" sortKey="hr" />
                     <SortHeader label="RBI" sortKey="rbi" />
                     <SortHeader label="SB" sortKey="sb" />
+                    <SortHeader label="K" sortKey="so" />
+                    <SortHeader label="EV" sortKey="exit_velo" />
+                    <SortHeader label="HH%" sortKey="hard_hit_pct" />
+                    <SortHeader label="BABIP" sortKey="babip" />
+                    <SortHeader label="wRC+" sortKey="wrc_plus" />
+                    <SortHeader label="Whiff%" sortKey="whiff_pct" />
+                    <span></span>
                   </>
                 ) : (
                   <>
-                    <span className="text-right flex flex-col leading-tight"><SortHeader label="R" sortKey="r" align="right" /><SortHeader label="IP" sortKey="ip" align="right" className="text-white/20 hover:text-white/50" /></span>
-                    <span className="text-right flex flex-col leading-tight"><SortHeader label="TB" sortKey="tb" align="right" /><SortHeader label="K" sortKey="so" align="right" className="text-white/20 hover:text-white/50" /></span>
-                    <span className="text-right flex flex-col leading-tight"><SortHeader label="BB" sortKey="bb" align="right" /><SortHeader label="W" sortKey="w" align="right" className="text-white/20 hover:text-white/50" /></span>
-                    <span className="text-right flex flex-col leading-tight"><SortHeader label="RBI" sortKey="rbi" align="right" /><SortHeader label="SV" sortKey="sv" align="right" className="text-white/20 hover:text-white/50" /></span>
-                    <span className="text-right flex flex-col leading-tight"><SortHeader label="SB" sortKey="sb" align="right" /><SortHeader label="HLD" sortKey="hld" align="right" className="text-white/20 hover:text-white/50" /></span>
-                  </>
-                )}
-                {/* Separator */}
-                <span></span>
-                {/* 4 traditional columns */}
-                {headerMode === 'pitcher' ? (
-                  <>
-                    <SortHeader label="ERA" sortKey="era" className="text-white/25 hover:text-white/50" />
-                    <SortHeader label="WHIP" sortKey="whip" className="text-white/25 hover:text-white/50" />
-                    <SortHeader label="K/9" sortKey="kper9" className="text-white/25 hover:text-white/50" />
-                    <SortHeader label="QS" sortKey="qs" className="text-white/25 hover:text-white/50" />
-                  </>
-                ) : headerMode === 'batter' ? (
-                  <>
-                    <SortHeader label="AVG" sortKey="avg" className="text-white/25 hover:text-white/50" />
-                    <SortHeader label="OPS" sortKey="ops" className="text-white/25 hover:text-white/50" />
-                    <SortHeader label="HR" sortKey="hr" className="text-white/25 hover:text-white/50" />
-                    <SortHeader label="SB" sortKey="sb" className="text-white/25 hover:text-white/50" />
-                  </>
-                ) : (
-                  <>
-                    <span className="text-right flex flex-col leading-tight"><SortHeader label="AVG" sortKey="avg" className="text-white/25 hover:text-white/50" /><SortHeader label="ERA" sortKey="era" className="text-white/15 hover:text-white/50" /></span>
-                    <span className="text-right flex flex-col leading-tight"><SortHeader label="OPS" sortKey="ops" className="text-white/25 hover:text-white/50" /><SortHeader label="WHIP" sortKey="whip" className="text-white/15 hover:text-white/50" /></span>
-                    <span className="text-right flex flex-col leading-tight"><SortHeader label="HR" sortKey="hr" className="text-white/25 hover:text-white/50" /><SortHeader label="K/9" sortKey="kper9" className="text-white/15 hover:text-white/50" /></span>
-                    <span className="text-right flex flex-col leading-tight"><SortHeader label="SB" sortKey="sb" className="text-white/25 hover:text-white/50" /><SortHeader label="QS" sortKey="qs" className="text-white/15 hover:text-white/50" /></span>
+                    <span className="text-right flex flex-col leading-tight"><SortHeader label="PA" sortKey="pa" align="right" /><SortHeader label="IP" sortKey="ip" align="right" className="text-white/20 hover:text-white/50" /></span>
+                    <span className="text-right flex flex-col leading-tight"><SortHeader label="AVG" sortKey="avg" align="right" /><SortHeader label="W" sortKey="w" align="right" className="text-white/20 hover:text-white/50" /></span>
+                    <span className="text-right flex flex-col leading-tight"><SortHeader label="R" sortKey="r" align="right" /><SortHeader label="SV" sortKey="sv" align="right" className="text-white/20 hover:text-white/50" /></span>
+                    <span className="text-right flex flex-col leading-tight"><SortHeader label="BB" sortKey="bb" align="right" /><SortHeader label="HLD" sortKey="hld" align="right" className="text-white/20 hover:text-white/50" /></span>
+                    <span className="text-right flex flex-col leading-tight"><SortHeader label="HR" sortKey="hr" align="right" /><SortHeader label="K" sortKey="so" align="right" className="text-white/20 hover:text-white/50" /></span>
+                    <span className="text-right flex flex-col leading-tight"><SortHeader label="RBI" sortKey="rbi" align="right" /><SortHeader label="CG" sortKey="cg" align="right" className="text-white/20 hover:text-white/50" /></span>
+                    <span className="text-right flex flex-col leading-tight"><SortHeader label="SB" sortKey="sb" align="right" /><SortHeader label="IRS" sortKey="irstr" align="right" className="text-white/20 hover:text-white/50" /></span>
+                    <span className="text-right flex flex-col leading-tight"><SortHeader label="K" sortKey="so" align="right" /><SortHeader label="Velo" sortKey="fb_velo" align="right" className="text-white/20 hover:text-white/50" /></span>
+                    <span className="text-right flex flex-col leading-tight"><SortHeader label="EV" sortKey="exit_velo" align="right" /><SortHeader label="Stuff+" sortKey="stuff_plus" align="right" className="text-white/20 hover:text-white/50" /></span>
+                    <span className="text-right flex flex-col leading-tight"><SortHeader label="HH%" sortKey="hard_hit_pct" align="right" /><SortHeader label="Loc+" sortKey="location_plus" align="right" className="text-white/20 hover:text-white/50" /></span>
+                    <span className="text-right flex flex-col leading-tight"><SortHeader label="BABIP" sortKey="babip" align="right" /><SortHeader label="xERA" sortKey="xera" align="right" className="text-white/20 hover:text-white/50" /></span>
+                    <span className="text-right flex flex-col leading-tight"><SortHeader label="wRC+" sortKey="wrc_plus" align="right" /><SortHeader label="HH%" sortKey="hard_hit_against" align="right" className="text-white/20 hover:text-white/50" /></span>
+                    <span className="text-right flex flex-col leading-tight"><SortHeader label="Whiff%" sortKey="whiff_pct" align="right" /><SortHeader label="BRL%" sortKey="barrel_against" align="right" className="text-white/20 hover:text-white/50" /></span>
+                    <span className="text-right flex flex-col leading-tight"><span className="text-transparent">_</span><SortHeader label="Chase%" sortKey="chase_rate" align="right" className="text-white/20 hover:text-white/50" /></span>
                   </>
                 )}
                 {/* Tag column */}
@@ -650,7 +655,7 @@ export default function Home() {
 
             {/* ALL TEAMS TAB */}
             {rightPanel === 'allteams' && (
-              <AllTeamsPanel allPlayers={store.allPlayers} onUndraft={store.undraftPlayer} />
+              <AllTeamsRoster allPlayers={store.allPlayers} />
             )}
 
             {/* NEWS TAB */}

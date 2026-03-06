@@ -23,7 +23,7 @@ os.makedirs(OUTPUT_DIR, exist_ok=True)
 HEADERS = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
 
 # Historical seasons to pull for player cards
-HISTORY_SEASONS = ['2022', '2023', '2024']
+HISTORY_SEASONS = ['2023', '2024', '2025']
 
 # =============================================================================
 # BSB CUSTOM SCORING
@@ -211,27 +211,27 @@ def fetch_mlb_bios_and_history(batters, pitchers):
             p['histFpts'] = {yr: history.get(yr) for yr in HISTORY_SEASONS if yr in history}
             enriched += 1
 
-    # Clean up temp field
-    for p in all_players:
-        p.pop('mlbam_id', None)
+    # Keep mlbam_id for custom analysis mapping
 
     print(f"  ✅ Enriched {enriched}/{len(all_players)} players with bio & history")
 
 
 # =============================================================================
-# FETCH PROJECTIONS
+# FETCH ACTUALS (2025)
 # =============================================================================
 def fetch_projections():
-    print("Fetching Steamer batting projections...")
-    batters_raw = fetch_json(
-        "https://www.fangraphs.com/api/projections?type=steamer&stats=bat&pos=all&team=0&players=0&lg=all"
+    print("Fetching FanGraphs 2025 batting actuals...")
+    batters_req = fetch_json(
+        "https://www.fangraphs.com/api/leaders/major-league/data?age=&pos=all&stats=bat&lg=all&qual=20&season=2025&season1=2025&startdate=&enddate=&month=0&hand=&team=0&pageitems=2000&pagenum=1"
     )
+    batters_raw = batters_req.get('data', [])
     print(f"  Got {len(batters_raw)} batters")
 
-    print("Fetching Steamer pitching projections...")
-    pitchers_raw = fetch_json(
-        "https://www.fangraphs.com/api/projections?type=steamer&stats=pit&pos=all&team=0&players=0&lg=all"
+    print("Fetching FanGraphs 2025 pitching actuals...")
+    pitchers_req = fetch_json(
+        "https://www.fangraphs.com/api/leaders/major-league/data?age=&pos=all&stats=pit&lg=all&qual=10&season=2025&season1=2025&startdate=&enddate=&month=0&hand=&team=0&pageitems=2000&pagenum=1"
     )
+    pitchers_raw = pitchers_req.get('data', [])
     print(f"  Got {len(pitchers_raw)} pitchers")
 
     return batters_raw, pitchers_raw
@@ -241,22 +241,29 @@ def fetch_projections():
 # PROCESS BATTERS
 # =============================================================================
 def process_batters(batters_raw):
+    import re
     results = []
     for b in batters_raw:
         pa = b.get('PA', 0) or 0
-        if pa < 100:
+        if pa < 50:
             continue
         fpts = calc_batter_fpts(b)
-        pos = normalize_pos(b.get('minpos', 'DH'))
-        # Handle multi-position designations from FanGraphs
-        pos_parts = pos.split('/')
+        
+        # Parse position from the HTML in the 'Name' string like: <a href="statss.aspx?playerid=15640&position=OF">Aaron Judge</a>
+        html_name = str(b.get('Name', ''))
+        pos_match = re.search(r'position=([A-Z1-3/]+)', html_name)
+        pos = pos_match.group(1).replace('/', ',') if pos_match else 'DH'
+        
+        pos = normalize_pos(pos.split(',')[0] if ',' in pos else pos)
+        
+        pos_parts = pos.split(',') if ',' in pos else [pos]
         primary_pos = normalize_pos(pos_parts[0])
         all_positions = list(set(normalize_pos(p) for p in pos_parts))
 
         results.append({
-            'id': str(b.get('playerid', '')),
-            'mlbam_id': b.get('xMLBAMID'),  # MLB Stats API ID — used for bio fetch, removed later
-            'name': b['PlayerName'],
+            'id': str(b.get('playerid', b.get('xMLBAMID', ''))),
+            'mlbam_id': b.get('xMLBAMID'),
+            'name': b.get('PlayerName', html_name),
             'team': b.get('Team', ''),
             'pos': primary_pos,
             'positions': all_positions,
@@ -288,12 +295,13 @@ def process_batters(batters_raw):
 # =============================================================================
 def process_pitchers(pitchers_raw, batter_ids=None):
     """Process pitchers. batter_ids is a set of batter IDs to detect duplicates (e.g. Ohtani)."""
+    import re
     if batter_ids is None:
         batter_ids = set()
     results = []
     for p in pitchers_raw:
         ip = p.get('IP', 0) or 0
-        if ip < 20:
+        if ip < 10:
             continue
         fpts = calc_pitcher_fpts(p)
         gs = p.get('GS', 0) or 0
@@ -302,6 +310,7 @@ def process_pitchers(pitchers_raw, batter_ids=None):
         relief_apps = g - gs
         irstr = round(relief_apps * 0.45 * 0.70, 1)
         bb = round(p.get('BB', 0) or 0)
+        cg = round(p.get('CG', 0) or 0)
         h = round(p.get('H', 0) or 0)
 
         # Calculate WHIP and K/9
@@ -309,16 +318,16 @@ def process_pitchers(pitchers_raw, batter_ids=None):
         so = p.get('SO', 0) or 0
         kper9 = round((so / ip) * 9, 1) if ip > 0 else 0.0
 
-        # If this pitcher's ID also exists as a batter (e.g. Ohtani),
-        # give the pitcher version a unique ID with 'p' suffix
-        pid = str(p.get('playerid', ''))
+        pid = str(p.get('playerid', p.get('xMLBAMID', '')))
         if pid in batter_ids:
             pid = pid + 'p'
 
+        html_name = str(p.get('Name', ''))
+
         results.append({
             'id': pid,
-            'mlbam_id': p.get('xMLBAMID'),  # MLB Stats API ID — used for bio fetch, removed later
-            'name': p['PlayerName'],
+            'mlbam_id': p.get('xMLBAMID'),
+            'name': p.get('PlayerName', html_name),
             'team': p.get('Team', ''),
             'role': role,
             'pos': 'P',
@@ -329,6 +338,7 @@ def process_pitchers(pitchers_raw, batter_ids=None):
             'sv': round(p.get('SV', 0) or 0, 1),
             'hld': round(p.get('HLD', 0) or 0, 1),
             'qs': round(p.get('QS', 0) or 0, 1),
+            'cg': cg,
             'so': round(p.get('SO', 0) or 0),
             'era': round(p.get('ERA', 0) or 0, 2),
             'whip': whip,
@@ -899,7 +909,7 @@ def analyze_scarcity(batters, pitchers):
 # =============================================================================
 # ENRICH: posRank, VORP, Tier
 # =============================================================================
-REPLACEMENT_LEVEL = 17  # 16-team league: 17th player is replacement
+REPLACEMENT_LEVEL = 16  # 16-team league: 16th best player at each position is replacement
 
 def assign_tier(rank, pool_size):
     """Assign tier 1-5 based on percentile rank within pool."""

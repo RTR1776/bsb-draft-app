@@ -35,7 +35,7 @@ BATTERS_JSON = SCRIPT_DIR / "src" / "data" / "batters.json"
 PITCHERS_JSON = SCRIPT_DIR / "src" / "data" / "pitchers.json"
 OUTPUT_JSON = SCRIPT_DIR / "src" / "data" / "advancedStats.json"
 
-YEARS = [2022, 2023, 2024, 2025]
+YEARS = [2023, 2024, 2025]
 
 
 def load_players():

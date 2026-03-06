@@ -15,6 +15,8 @@ export function MyTeamPositionGrid({ myPlayers, onUndraft }: { myPlayers: Player
     '3B': { players: [], slots: 2 },
     SS: { players: [], slots: 2 },
     OF: { players: [], slots: 4 },
+    U: { players: [], slots: 1 },
+    DH: { players: [], slots: 1 },
     SP: { players: [], slots: 6 },
     RP: { players: [], slots: 4 },
   }
@@ -23,8 +25,32 @@ export function MyTeamPositionGrid({ myPlayers, onUndraft }: { myPlayers: Player
     if (p.pos === 'P') {
       const role = p.role === 'SP' ? 'SP' : 'RP'
       positions[role].players.push(p)
-    } else if (positions[p.pos]) {
-      positions[p.pos].players.push(p)
+    } else {
+      let placed = false
+      if (positions[p.pos] && positions[p.pos].players.length < positions[p.pos].slots) {
+        positions[p.pos].players.push(p)
+        placed = true
+      }
+      if (!placed) {
+        for (const altPos of p.positions) {
+          if (altPos !== p.pos && positions[altPos] && positions[altPos].players.length < positions[altPos].slots) {
+            positions[altPos].players.push(p)
+            placed = true
+            break
+          }
+        }
+      }
+      if (!placed && positions['U'].players.length < positions['U'].slots) {
+        positions['U'].players.push(p)
+        placed = true
+      }
+      if (!placed && positions['DH'].players.length < positions['DH'].slots) {
+        positions['DH'].players.push(p)
+        placed = true
+      }
+      if (!placed && positions[p.pos]) {
+        positions[p.pos].players.push(p) // overflow
+      }
     }
   })
 
@@ -74,6 +100,11 @@ export function MyTeamPositionGrid({ myPlayers, onUndraft }: { myPlayers: Player
         </div>
         {/* Home Plate */}
         <div className="flex justify-center mt-4 relative z-10">{renderSlot('C', 'w-24')}</div>
+        {/* U and DH */}
+        <div className="flex justify-center gap-6 mt-4 relative z-10 border-t border-white/10 pt-3">
+          {renderSlot('U', 'w-20')}
+          {renderSlot('DH', 'w-20')}
+        </div>
       </div>
 
       <div className="grid grid-cols-2 gap-2 bg-white/[0.02] rounded-lg border border-white/5 p-2">

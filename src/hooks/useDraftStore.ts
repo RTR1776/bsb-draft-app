@@ -3,9 +3,9 @@ import { useState, useCallback, useEffect, useMemo } from 'react'
 import battersData from '@/data/batters.json'
 import pitchersData from '@/data/pitchers.json'
 import templatesData from '@/data/templates.json'
+import customAnalysisData from '@/data/customAnalysis.json'
 import analysisData from '@/data/analysis.json'
 import draftCategoriesData from '@/data/draftCategories.json'
-import projectionsData from '@/data/projections.json'
 import draftOrderData from '@/data/draftOrder2026.json'
 
 export type Player = {
@@ -37,7 +37,7 @@ export type Player = {
   pa?: number; r?: number; hr?: number; rbi?: number; sb?: number; bb?: number
   avg?: number; tb?: number; obp?: number; slg?: number; ops?: number; war?: number
   // pitcher stats
-  ip?: number; w?: number; sv?: number; hld?: number; qs?: number; so?: number
+  ip?: number; w?: number; sv?: number; hld?: number; qs?: number; cg?: number; so?: number
   era?: number; whip?: number; kper9?: number; h?: number; irstr?: number; g?: number; gs?: number
   // BSB custom projection fields
   bsbFpts?: number
@@ -46,11 +46,19 @@ export type Player = {
   injuryFlag?: string        // 'HEALTHY' | 'MINOR' | 'MODERATE' | 'SEVERE'
   healthPct?: number
   gamesPlayed?: Record<string, number>
-  weeklyCV?: number
+  // custom analysis fields (TWV)
+  twv?: number
+  twvDelta?: number
   weeklyMean?: number
-  consistencyGrade?: string  // 'A' through 'F'
+  cv?: number
+  consistencyGrade?: string
   consistencyScore?: number
-  ageCurve?: string          // 'Pre-Peak' | 'Peak' | 'Declining' | 'Late Career'
+  oldTeam?: string
+  newTeam?: string
+  parkShiftPct?: number
+  isNewCloser?: boolean
+  isNewSetup?: boolean
+  ageCurve?: string
   ageAdj?: number
 }
 
@@ -84,18 +92,14 @@ const STORAGE_KEY = 'bsb-draft-state'
 const TEAM_KEY = 'bsb-my-team'
 
 export function useDraftStore() {
-  const [batters, setBatters] = useState<Player[]>(() =>
-    (battersData as any[]).map(b => {
-      const proj = (projectionsData as any).players?.[b.id]
-      return { ...b, drafted: false, ...proj }
-    })
-  )
-  const [pitchers, setPitchers] = useState<Player[]>(() =>
-    (pitchersData as any[]).map(p => {
-      const proj = (projectionsData as any).players?.[p.id]
-      return { ...p, drafted: false, ...proj }
-    })
-  )
+  const [batters, setBatters] = useState<Player[]>(() => {
+    const analysisMap = customAnalysisData as Record<string, any>
+    return (battersData as any[]).map(b => ({ ...b, ...(analysisMap[b.id] || {}), drafted: false }))
+  })
+  const [pitchers, setPitchers] = useState<Player[]>(() => {
+    const analysisMap = customAnalysisData as Record<string, any>
+    return (pitchersData as any[]).map(p => ({ ...p, ...(analysisMap[p.id] || {}), drafted: false }))
+  })
   const [draftState, setDraftState] = useState<DraftState>({
     phase: 'pre-draft',
     activeCategory: null,
@@ -117,7 +121,7 @@ export function useDraftStore() {
 
   const setMyTeamNumber = useCallback((num: number) => {
     setMyTeamNumberState(num)
-    try { localStorage.setItem(TEAM_KEY, String(num)) } catch {}
+    try { localStorage.setItem(TEAM_KEY, String(num)) } catch { }
     // Auto-set template from 2026 draft order
     const tpl = (draftOrderData as any).teamTemplates?.[String(num)]
     if (tpl) {
