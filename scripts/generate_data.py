@@ -263,8 +263,8 @@ def process_batters(batters_raw):
         results.append({
             'id': str(b.get('playerid', b.get('xMLBAMID', ''))),
             'mlbam_id': b.get('xMLBAMID'),
-            'name': b.get('PlayerName', html_name),
-            'team': b.get('Team', ''),
+            'name': re.sub(r'<[^>]+>', '', b.get('PlayerName', html_name)),
+            'team': re.sub(r'<[^>]+>', '', str(b.get('Team', ''))),
             'pos': primary_pos,
             'positions': all_positions,
             'fpts': fpts,
@@ -327,8 +327,8 @@ def process_pitchers(pitchers_raw, batter_ids=None):
         results.append({
             'id': pid,
             'mlbam_id': p.get('xMLBAMID'),
-            'name': p.get('PlayerName', html_name),
-            'team': p.get('Team', ''),
+            'name': re.sub(r'<[^>]+>', '', p.get('PlayerName', html_name)),
+            'team': re.sub(r'<[^>]+>', '', str(p.get('Team', ''))),
             'role': role,
             'pos': 'P',
             'positions': ['P'],

@@ -156,12 +156,12 @@ export function PlayerRow({
           <span className="text-right text-white/80" title="HR">{player.hr || 0}</span>
           <span className="text-right text-white/80" title="RBI">{player.rbi || 0}</span>
           <span className="text-right text-white/80" title="SB">{player.sb || 0}</span>
-          <span className="text-right text-white/80" title="K%">{advStats.k_pct ? `${(advStats.k_pct * 100).toFixed(0)}%` : '—'}</span>
+          <span className="text-right text-white/80" title="K%">{advStats.k_pct ? `${(advStats.k_pct).toFixed(0)}%` : '—'}</span>
           <span className="text-right text-white/80" title="EV">{advStats.exit_velo?.toFixed(1) || '—'}</span>
           <span className="text-right text-white/80" title="HH%">{advStats.hard_hit_pct ? `${(advStats.hard_hit_pct * 100).toFixed(0)}%` : '—'}</span>
           <span className="text-right text-white/80" title="BABIP">{advStats.babip?.toFixed(3).replace(/^0\./, '.') || '—'}</span>
           <span className="text-right text-white/80" title="wRC+">{advStats.wrc_plus?.toFixed(0) || '—'}</span>
-          <span className="text-right text-white/80" title="Whiff%">{advStats.whiff_pct ? `${(advStats.whiff_pct * 100).toFixed(0)}%` : '—'}</span>
+          <span className="text-right text-white/80" title="Whiff%">{advStats.whiff_pct ? `${(advStats.whiff_pct).toFixed(0)}%` : '—'}</span>
           <span className="text-transparent">_</span>
         </>
       ) : (
@@ -179,7 +179,7 @@ export function PlayerRow({
           <span className="text-right text-white/80" title="xERA">{advStats.xera?.toFixed(2) || '—'}</span>
           <span className="text-right text-white/80" title="HH%">{advStats.hard_hit_against ? `${(advStats.hard_hit_against * 100).toFixed(0)}%` : '—'}</span>
           <span className="text-right text-white/80" title="BRL%">{advStats.barrel_against ? `${(advStats.barrel_against * 100).toFixed(1)}%` : '—'}</span>
-          <span className="text-right text-white/80" title="Chase%">{advStats.chase_rate ? `${(advStats.chase_rate * 100).toFixed(0)}%` : '—'}</span>
+          <span className="text-right text-white/80" title="Chase%">{advStats.chase_rate ? `${(advStats.chase_rate).toFixed(0)}%` : '—'}</span>
         </>
       )}
       {/* Draft tag */}

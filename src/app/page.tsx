@@ -338,58 +338,7 @@ export default function Home() {
           <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[55] xl:hidden" onClick={() => setShowRightSidebar(false)} />
         )}
 
-        {/* ── LEFT SIDEBAR ── */}
-        <aside className={`fixed inset-y-0 left-0 w-72 bg-bsb-dark/95 backdrop-blur-2xl border-r border-white/10 overflow-y-auto p-4 transition-transform transform z-[60] lg:relative lg:translate-x-0 lg:w-64 lg:bg-bsb-dark/60 lg:z-40 lg:p-3 ${showLeftSidebar ? 'translate-x-0 shadow-[10px_0_30px_rgba(0,0,0,0.8)]' : '-translate-x-full lg:shadow-[10px_0_30px_rgba(0,0,0,0.3)]'}`}>
-          {/* Mobile close button */}
-          <div className="flex justify-between items-center mb-4 lg:hidden">
-            <h2 className="text-sm font-bold text-white uppercase tracking-wider">Filters & Templates</h2>
-            <button className="text-white/50 hover:text-white pb-1" onClick={() => setShowLeftSidebar(false)}>✕</button>
-          </div>
-          <TemplatePanel
-            templates={store.templates} analysis={store.analysis}
-            selected={store.draftState.myTemplate} onSelect={store.setMyTemplate}
-          />
-          {store.draftState.myTemplate && store.templates[store.draftState.myTemplate] && (
-            <>
-              <TemplateDetail
-                template={store.draftState.myTemplate}
-                picks={store.templates[store.draftState.myTemplate]}
-                activeCategory={store.draftState.activeCategory}
-              />
-              <div className="mt-3">
-                <MyPicksPanel
-                  templatePicks={store.templates[store.draftState.myTemplate]}
-                  categories={store.categories}
-                  activeCategory={store.draftState.activeCategory}
-                  categoryPickCounts={store.draftState.categoryPicks}
-                />
-              </div>
-            </>
-          )}
 
-          <div className="mt-4">
-            <h3 className="text-sm font-bold text-bsb-dim uppercase tracking-wider mb-2">Live Scarcity</h3>
-            <div className="space-y-1.5">
-              {Object.entries(scarcity).sort(([, a], [, b]) => b - a).map(([pos, val]) => (
-                <ScarcityBar key={pos} label={pos} value={val} max={maxScarcity} />
-              ))}
-            </div>
-          </div>
-
-          <div className="mt-4">
-            <h3 className="text-sm font-bold text-bsb-dim uppercase tracking-wider mb-2">Pool Depth</h3>
-            <div className="space-y-0.5 text-xs">
-              {Object.entries(remaining).sort(([, a], [, b]) => a.length - b.length).map(([pos, pool]) => (
-                <div key={pos} className="flex justify-between text-bsb-dim">
-                  <span>{pos}</span>
-                  <span className={`font-mono ${pool.length < 16 ? 'text-red-400 font-bold' : ''}`}>
-                    {pool.length} left
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </aside>
 
         {/* ── CENTER: Draft Board ── */}
         <main className="flex-1 flex flex-col overflow-hidden">

@@ -9,22 +9,27 @@ import { TEAM_NAMES, teamColor, teamBgColor } from './constants'
 // ─────────────────────────────────────────
 export function MyTeamPositionGrid({ myPlayers, onUndraft }: { myPlayers: Player[]; onUndraft: (id: string) => void }) {
   const positions: Record<string, { players: Player[]; slots: number }> = {
-    C: { players: [], slots: 2 },
-    '1B': { players: [], slots: 2 },
-    '2B': { players: [], slots: 2 },
-    '3B': { players: [], slots: 2 },
-    SS: { players: [], slots: 2 },
-    OF: { players: [], slots: 4 },
+    C: { players: [], slots: 1 },
+    '1B': { players: [], slots: 1 },
+    '2B': { players: [], slots: 1 },
+    '3B': { players: [], slots: 1 },
+    SS: { players: [], slots: 1 },
+    OF: { players: [], slots: 3 },
     U: { players: [], slots: 1 },
     DH: { players: [], slots: 1 },
-    SP: { players: [], slots: 6 },
+    SP: { players: [], slots: 5 },
     RP: { players: [], slots: 4 },
   }
+  const bench: Player[] = []
 
   myPlayers.forEach(p => {
     if (p.pos === 'P') {
       const role = p.role === 'SP' ? 'SP' : 'RP'
-      positions[role].players.push(p)
+      if (positions[role] && positions[role].players.length < positions[role].slots) {
+        positions[role].players.push(p)
+      } else {
+        bench.push(p)
+      }
     } else {
       let placed = false
       if (positions[p.pos] && positions[p.pos].players.length < positions[p.pos].slots) {
@@ -48,8 +53,8 @@ export function MyTeamPositionGrid({ myPlayers, onUndraft }: { myPlayers: Player
         positions['DH'].players.push(p)
         placed = true
       }
-      if (!placed && positions[p.pos]) {
-        positions[p.pos].players.push(p) // overflow
+      if (!placed) {
+        bench.push(p)
       }
     }
   })
@@ -111,6 +116,29 @@ export function MyTeamPositionGrid({ myPlayers, onUndraft }: { myPlayers: Player
         {renderSlot('SP', 'w-full')}
         {renderSlot('RP', 'w-full')}
       </div>
+
+      {bench.length > 0 && (
+        <div className="mt-4 bg-white/[0.02] border border-white/5 rounded-lg p-3">
+          <h3 className="text-xs font-bold text-bsb-dim uppercase tracking-wider mb-2">Reserves / Bench</h3>
+          <div className="space-y-1">
+            {bench.sort((a, b) => b.fpts - a.fpts).map(p => (
+              <div
+                key={p.id}
+                className="flex items-center gap-2 text-[10px] py-0.5 px-1 hover:bg-white/5 rounded cursor-pointer transition-colors"
+                onClick={() => onUndraft(p.id)}
+                title="Click to undraft"
+              >
+                <PosBadge pos={p.pos === 'P' ? (p.role || 'P') : p.pos} small />
+                <span className="flex-1 text-white/90 truncate">{p.name}</span>
+                {p.positions && p.positions.length > 1 && (
+                  <span className="text-[9px] text-bsb-dim truncate max-w-[60px]">{p.positions.filter(alt => alt !== p.pos).join(',')}</span>
+                )}
+                <span className="font-mono text-bsb-gold">{p.fpts}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
