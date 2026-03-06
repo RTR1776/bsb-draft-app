@@ -28,33 +28,58 @@ export function MyTeamPositionGrid({ myPlayers, onUndraft }: { myPlayers: Player
     }
   })
 
-  return (
-    <div className="space-y-1.5">
-      {Object.entries(positions).map(([pos, { players, slots }]) => (
-        <div key={pos} className="flex items-start gap-1.5">
-          <span className={`w-7 text-right text-[10px] font-bold shrink-0 mt-0.5 pos-text-${pos}`}>
-            <PosBadge pos={pos} small />
-          </span>
-          <div className="flex-1 flex flex-wrap gap-0.5">
-            {players.sort((a, b) => b.fpts - a.fpts).map(p => (
-              <div
-                key={p.id}
-                className="flex items-center gap-0.5 bg-white/5 rounded px-1 py-0.5 text-[10px] cursor-pointer hover:bg-white/10"
-                onClick={() => onUndraft(p.id)}
-                title={`${p.name} (${p.fpts} FPTS) — click to undraft`}
-              >
-                <span className="text-white/80 truncate max-w-[95px]">{p.name.split(' ')[0][0] + '. ' + p.name.split(' ').slice(1).join(' ')}</span>
-                <span className="text-bsb-gold font-bold">{p.fpts}</span>
-              </div>
-            ))}
-            {Array.from({ length: Math.max(0, slots - players.length) }).map((_, i) => (
-              <div key={`empty-${pos}-${i}`} className="flex items-center bg-white/[0.02] rounded px-2 py-0.5 text-[10px] text-white/15">
-                —
-              </div>
-            ))}
-          </div>
+  const renderSlot = (pos: string, widthClass = 'w-16') => {
+    const { players, slots } = positions[pos]
+    return (
+      <div className={`flex flex-col items-center gap-0.5 ${widthClass}`}>
+        <span className={`text-[10px] font-bold mt-1 pos-text-${pos}`}><PosBadge pos={pos} small /></span>
+        <div className="flex flex-col gap-0.5 w-full">
+          {players.sort((a, b) => b.fpts - a.fpts).map(p => (
+            <div
+              key={p.id}
+              className={`w-full truncate text-[10px] text-center bg-white/10 border border-white/5 rounded px-1 py-[2px] cursor-pointer hover:bg-red-500/20 hover:border-red-500/50 transition-colors ${pos === 'OF' || pos === 'SP' || pos === 'RP' ? 'max-w-[80px] mx-auto' : ''}`}
+              onClick={() => onUndraft(p.id)}
+              title={`${p.name} (${p.fpts} pts) — Click to undraft`}
+            >
+              <span className="text-white/90">{p.name.split(' ')[0][0] + '.'} {p.name.split(' ').slice(1).join(' ')}</span>
+            </div>
+          ))}
+          {Array.from({ length: Math.max(0, slots - players.length) }).map((_, i) => (
+            <div key={`emp-${pos}-${i}`} className={`w-full text-center text-[10px] bg-black/20 border border-white/5 rounded py-[2px] text-white/10 ${pos === 'OF' || pos === 'SP' || pos === 'RP' ? 'max-w-[80px] mx-auto' : ''}`}>
+              Empty
+            </div>
+          ))}
         </div>
-      ))}
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="bg-green-950/20 rounded-lg border border-green-500/20 p-3 pt-4 relative overflow-hidden shadow-[inset_0_0_20px_rgba(0,0,0,0.5)]">
+        {/* Diamond background lines */}
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-[40%] w-32 h-32 border border-white/5 rotate-45 rounded-sm pointer-events-none"></div>
+
+        {/* OF */}
+        <div className="flex justify-center relative z-10">{renderSlot('OF', 'w-full')}</div>
+        {/* Infield Top */}
+        <div className="flex justify-between px-8 mt-2 relative z-10">
+          {renderSlot('SS', 'w-20')}
+          {renderSlot('2B', 'w-20')}
+        </div>
+        {/* Infield Corners */}
+        <div className="flex justify-between mt-4 relative z-10">
+          {renderSlot('3B', 'w-20')}
+          {renderSlot('1B', 'w-20')}
+        </div>
+        {/* Home Plate */}
+        <div className="flex justify-center mt-4 relative z-10">{renderSlot('C', 'w-24')}</div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-2 bg-white/[0.02] rounded-lg border border-white/5 p-2">
+        {renderSlot('SP', 'w-full')}
+        {renderSlot('RP', 'w-full')}
+      </div>
     </div>
   )
 }

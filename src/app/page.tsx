@@ -30,7 +30,9 @@ export default function Home() {
   const [posFilter, setPosFilter] = useState<string | null>(null)
   const [showAllPlayers, setShowAllPlayers] = useState(false)
   const [showDrafted, setShowDrafted] = useState(true)
+  const [showLeftSidebar, setShowLeftSidebar] = useState(false)
   const [rightPanel, setRightPanel] = useState<'myteam' | 'allteams' | 'news'>('myteam')
+  const [showRightSidebar, setShowRightSidebar] = useState(false)
   const [showHints, setShowHints] = useState(true)
   const searchRef = useRef<HTMLInputElement>(null)
 
@@ -41,6 +43,9 @@ export default function Home() {
 
   // Player card modal state
   const [cardPlayer, setCardPlayer] = useState<Player | null>(null)
+
+  // Sorting state
+  const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'desc' | 'asc' } | null>(null)
 
   // Keyboard shortcut
   useEffect(() => {
@@ -90,8 +95,19 @@ export default function Home() {
       players = players.filter(p => !p.drafted)
     }
 
-    return players.sort((a, b) => b.fpts - a.fpts)
-  }, [searchQuery, store.draftState.activeCategory, posFilter, store, fuse, showAllPlayers, showDrafted])
+    if (sortConfig) {
+      players.sort((a, b) => {
+        const valA = (a as any)[sortConfig.key] ?? 0
+        const valB = (b as any)[sortConfig.key] ?? 0
+        if (sortConfig.direction === 'desc') return valB - valA
+        return valA - valB
+      })
+    } else {
+      players.sort((a, b) => b.fpts - a.fpts)
+    }
+
+    return players
+  }, [searchQuery, store.draftState.activeCategory, posFilter, store, fuse, showAllPlayers, showDrafted, sortConfig])
 
   // Live scarcity
   const { scarcity, remaining } = store.getLiveScarcity()
@@ -144,6 +160,33 @@ export default function Home() {
   const activeCatPickCount = store.draftState.activeCategory
     ? store.getCategoryPickCount(store.draftState.activeCategory) : 0
 
+  // Header Sorting Helper
+  const handleSort = useCallback((key: string) => {
+    setSortConfig(prev => {
+      if (prev?.key === key) {
+        if (prev.direction === 'desc') return { key, direction: 'asc' }
+        return null // turn off sorting
+      }
+      return { key, direction: 'desc' }
+    })
+  }, [])
+
+  const SortHeader = useCallback(({ label, sortKey, align = 'right', className = '' }: { label: React.ReactNode, sortKey: string, align?: 'left' | 'center' | 'right', className?: string }) => {
+    const isActive = sortConfig?.key === sortKey
+    return (
+      <button
+        onClick={() => handleSort(sortKey)}
+        className={`flex items-center gap-0.5 hover:text-white transition-colors cursor-pointer outline-none ${align === 'right' ? 'justify-end' : align === 'center' ? 'justify-center' : 'justify-start'
+          } ${isActive ? 'text-white' : ''} ${className}`}
+      >
+        {label}
+        {isActive && (
+          <span className="text-[8px] text-bsb-accent leading-none block pt-[1px]">{sortConfig.direction === 'desc' ? '▼' : '▲'}</span>
+        )}
+      </button>
+    )
+  }, [sortConfig, handleSort])
+
   // Determine header mode: 'batter' | 'pitcher' | 'mixed'
   const headerMode: 'batter' | 'pitcher' | 'mixed' = (() => {
     if (store.draftState.activeCategory && !showAllPlayers) {
@@ -184,7 +227,7 @@ export default function Home() {
       )}
 
       {/* ── HEADER ── */}
-      <header className="flex items-center justify-between px-4 py-2 bg-bsb-dark border-b border-white/10">
+      <header className="flex items-center justify-between px-4 py-2 bg-bsb-dark/80 backdrop-blur-xl border-b border-white/10 shadow-lg z-50">
         <div className="flex items-center gap-3">
           <h1 className="text-lg font-black text-white">
             BSB<span className="text-bsb-accent">DRAFT</span>
@@ -221,12 +264,11 @@ export default function Home() {
                 Pick {activePickInRound}/16
               </span>
               {myPickInCategory && (
-                <span className={`text-[10px] font-bold font-mono px-1 rounded ${
-                  myPickInCategory === activePickInRound
-                    ? 'bg-bsb-gold/30 text-bsb-gold animate-pulse'
-                    : myPickInCategory > activePickInRound
-                      ? 'text-bsb-dim' : 'text-bsb-dim line-through'
-                }`}>
+                <span className={`text-[10px] font-bold font-mono px-1 rounded ${myPickInCategory === activePickInRound
+                  ? 'bg-bsb-gold/30 text-bsb-gold animate-pulse'
+                  : myPickInCategory > activePickInRound
+                    ? 'text-bsb-dim' : 'text-bsb-dim line-through'
+                  }`}>
                   {myPickInCategory === activePickInRound ? '→ YOUR PICK!' : `You: #${myPickInCategory}`}
                 </span>
               )}
@@ -253,9 +295,8 @@ export default function Home() {
         <div className="flex items-center gap-2">
           <button
             onClick={() => setShowDrafted(!showDrafted)}
-            className={`px-2 py-1 text-xs rounded transition-all ${
-              showDrafted ? 'text-bsb-dim hover:bg-white/5' : 'bg-bsb-mid text-white'
-            }`}
+            className={`px-2 py-1 text-xs rounded transition-all ${showDrafted ? 'text-bsb-dim hover:bg-white/5' : 'bg-bsb-mid text-white'
+              }`}
           >
             {showDrafted ? 'Hide Drafted' : 'Show Drafted'}
           </button>
@@ -287,9 +328,22 @@ export default function Home() {
       />
 
       {/* ── MAIN LAYOUT ── */}
-      <div className="flex-1 flex overflow-hidden">
+      <div className="flex-1 flex overflow-hidden bg-bsb-navy relative">
+        {/* Mobile Overlays */}
+        {showLeftSidebar && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[55] lg:hidden" onClick={() => setShowLeftSidebar(false)} />
+        )}
+        {showRightSidebar && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[55] xl:hidden" onClick={() => setShowRightSidebar(false)} />
+        )}
+
         {/* ── LEFT SIDEBAR ── */}
-        <aside className="w-64 bg-bsb-dark border-r border-white/10 overflow-y-auto p-3 hidden lg:block">
+        <aside className={`fixed inset-y-0 left-0 w-72 bg-bsb-dark/95 backdrop-blur-2xl border-r border-white/10 overflow-y-auto p-4 transition-transform transform z-[60] lg:relative lg:translate-x-0 lg:w-64 lg:bg-bsb-dark/60 lg:z-40 lg:p-3 ${showLeftSidebar ? 'translate-x-0 shadow-[10px_0_30px_rgba(0,0,0,0.8)]' : '-translate-x-full lg:shadow-[10px_0_30px_rgba(0,0,0,0.3)]'}`}>
+          {/* Mobile close button */}
+          <div className="flex justify-between items-center mb-4 lg:hidden">
+            <h2 className="text-sm font-bold text-white uppercase tracking-wider">Filters & Templates</h2>
+            <button className="text-white/50 hover:text-white pb-1" onClick={() => setShowLeftSidebar(false)}>✕</button>
+          </div>
           <TemplatePanel
             templates={store.templates} analysis={store.analysis}
             selected={store.draftState.myTemplate} onSelect={store.setMyTemplate}
@@ -349,27 +403,42 @@ export default function Home() {
             <div className="flex items-center justify-between">
               <div className="flex gap-1 items-center">
                 {!store.draftState.activeCategory && (
-                  <>
+                  <div className="flex flex-wrap gap-1 items-center">
                     <span className="text-[10px] text-bsb-dim mr-1">FILTER:</span>
-                    {['C', '1B', '2B', '3B', 'SS', 'OF', 'SP', 'RP'].map(pos => (
-                      <button key={pos}
-                        onClick={() => setPosFilter(posFilter === pos ? null : pos)}
-                        className={`px-1.5 py-0.5 rounded text-[10px] font-bold transition-all ${
-                          posFilter === pos ? `pos-${pos} text-white` : 'bg-white/5 text-bsb-dim hover:bg-white/10'
-                        }`}
-                      >{pos}</button>
-                    ))}
+                    {['C', '1B', '2B', '3B', 'SS', 'OF', 'SP', 'RP'].map(pos => {
+                      const count = remaining[pos]?.length || 0
+                      const isLow = count > 0 && count < 16
+                      const isActive = posFilter === pos
+                      // Base styles for the pill
+                      let pillClass = 'px-2 py-0.5 rounded-full text-[10px] font-bold transition-all border '
+                      if (isActive) {
+                        pillClass += `pos-${pos} text-white border-transparent shadow-[0_0_10px_rgba(255,255,255,0.2)]`
+                      } else {
+                        pillClass += isLow
+                          ? 'bg-red-500/10 text-red-400 border-red-500/30 hover:bg-red-500/20'
+                          : 'bg-white/5 text-bsb-dim border-white/10 hover:bg-white/10 hover:text-white'
+                      }
+
+                      return (
+                        <button key={pos}
+                          onClick={() => setPosFilter(posFilter === pos ? null : pos)}
+                          className={pillClass}
+                          title={`${count} un-drafted players remaining`}
+                        >
+                          {pos} <span className={`opacity-70 ml-0.5 ${isActive ? 'text-white' : ''}`}>({count})</span>
+                        </button>
+                      )
+                    })}
                     {posFilter && (
-                      <button onClick={() => setPosFilter(null)} className="text-[10px] text-bsb-dim hover:text-white ml-1">Clear</button>
+                      <button onClick={() => setPosFilter(null)} className="text-[10px] text-bsb-dim hover:text-white ml-2 underline underline-offset-2">Clear</button>
                     )}
-                  </>
+                  </div>
                 )}
                 {store.draftState.activeCategory && (
                   <button
                     onClick={() => setShowAllPlayers(!showAllPlayers)}
-                    className={`px-2 py-0.5 rounded text-[10px] font-bold transition-all ${
-                      showAllPlayers ? 'bg-bsb-mid text-white border border-white/20' : 'bg-white/5 text-bsb-dim hover:bg-white/10'
-                    }`}
+                    className={`px-2 py-0.5 rounded text-[10px] font-bold transition-all ${showAllPlayers ? 'bg-bsb-mid text-white border border-white/20' : 'bg-white/5 text-bsb-dim hover:bg-white/10'
+                      }`}
                   >{showAllPlayers ? '← Back to Category' : 'View All Players'}</button>
                 )}
               </div>
@@ -379,98 +448,102 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Player list header — same grid as rows */}
-          <div
-            className="grid items-center px-2 py-1 bg-white/[0.03] border-b border-white/5 text-[10px] text-bsb-dim uppercase tracking-wider font-mono"
-            style={{ gridTemplateColumns: GRID_COLS }}
-          >
-            <span className="text-right">#</span>
-            <span className="text-center">Pos</span>
-            <span>Player</span>
-            <span className="text-center">Tm</span>
-            <span className="text-right">Pts</span>
-            <span className="text-right text-green-400/60">VORP</span>
-            {/* 5 scoring columns — switch labels based on header mode */}
-            {headerMode === 'pitcher' ? (
-              <>
-                <span className="text-right">IP</span>
-                <span className="text-right">K</span>
-                <span className="text-right">W</span>
-                <span className="text-right">SV</span>
-                <span className="text-right">HLD</span>
-              </>
-            ) : headerMode === 'batter' ? (
-              <>
-                <span className="text-right">R</span>
-                <span className="text-right">TB</span>
-                <span className="text-right">BB</span>
-                <span className="text-right">RBI</span>
-                <span className="text-right">SB</span>
-              </>
-            ) : (
-              <>
-                <span className="text-right flex flex-col leading-tight"><span>R</span><span className="text-white/20">IP</span></span>
-                <span className="text-right flex flex-col leading-tight"><span>TB</span><span className="text-white/20">K</span></span>
-                <span className="text-right flex flex-col leading-tight"><span>BB</span><span className="text-white/20">W</span></span>
-                <span className="text-right flex flex-col leading-tight"><span>RBI</span><span className="text-white/20">SV</span></span>
-                <span className="text-right flex flex-col leading-tight"><span>SB</span><span className="text-white/20">HLD</span></span>
-              </>
-            )}
-            {/* Separator */}
-            <span></span>
-            {/* 4 traditional columns */}
-            {headerMode === 'pitcher' ? (
-              <>
-                <span className="text-right text-white/25">ERA</span>
-                <span className="text-right text-white/25">WHIP</span>
-                <span className="text-right text-white/25">K/9</span>
-                <span className="text-right text-white/25">QS</span>
-              </>
-            ) : headerMode === 'batter' ? (
-              <>
-                <span className="text-right text-white/25">AVG</span>
-                <span className="text-right text-white/25">OPS</span>
-                <span className="text-right text-white/25">HR</span>
-                <span className="text-right text-white/25">SB</span>
-              </>
-            ) : (
-              <>
-                <span className="text-right flex flex-col leading-tight text-white/25"><span>AVG</span><span className="text-white/15">ERA</span></span>
-                <span className="text-right flex flex-col leading-tight text-white/25"><span>OPS</span><span className="text-white/15">WHIP</span></span>
-                <span className="text-right flex flex-col leading-tight text-white/25"><span>HR</span><span className="text-white/15">K/9</span></span>
-                <span className="text-right flex flex-col leading-tight text-white/25"><span>SB</span><span className="text-white/15">QS</span></span>
-              </>
-            )}
-            {/* Tag column */}
-            <span></span>
-          </div>
-
           {/* Scrollable player list */}
-          <div className="flex-1 overflow-y-auto">
-            {displayPlayers.map((player, i) => (
-              <PlayerRow
-                key={player.id} player={player} rank={i + 1}
-                onDraft={(id) => store.draftPlayer(id, myNum ?? 0)}
-                onUndraft={(id) => store.undraftPlayer(id)}
-                onRightClick={handleRightClick}
-                onNameClick={(p) => setCardPlayer(p)}
-                showRole={player.pos === 'P'}
-                isRecommended={recIds.has(player.id)}
-                recRank={recommendations.findIndex(r => r.id === player.id) + 1}
-                pana={panaMap[player.id] || 0}
-                prevTier={i > 0 ? displayPlayers[i - 1].tier : undefined}
-                hasNews={newsStore.hasNewsForPlayer(player.id)}
-                newsSeverity={newsStore.topSeverityForPlayer(player.id)}
-                myTeamNumber={myNum}
-                battingOrder={player.pos !== 'P' ? (openingDayData.battingOrder as Record<string, number>)[player.name] : undefined}
-                rotationNumber={player.pos === 'P' ? (openingDayData.rotation as Record<string, number>)[player.name] : undefined}
-              />
-            ))}
-            {displayPlayers.length === 0 && (
-              <div className="p-8 text-center text-bsb-dim">
-                {searchQuery ? `No players found for "${searchQuery}"` : 'No players available'}
+          <div className="flex-1 overflow-y-auto relative">
+            {/* Player list header — same grid as rows */}
+            <div className="bg-bsb-dark/95 backdrop-blur-md border-b border-white/10 sticky top-0 z-20 shadow-lg">
+              <div
+                className="grid items-center px-2 py-1 text-[10px] text-bsb-dim uppercase tracking-wider font-mono max-w-[1050px] mx-auto w-full tabular-nums"
+                style={{ gridTemplateColumns: GRID_COLS }}
+              >
+                <span className="text-right">#</span>
+                <span className="text-center">Pos</span>
+                <span>Player</span>
+                <span className="text-center">Tm</span>
+                <SortHeader label="Pts" sortKey="fpts" className="text-bsb-gold hover:text-bsb-gold/80" />
+                <SortHeader label="VORP" sortKey="vorp" className="text-green-400/60 hover:text-green-400/80" />
+                {/* 5 scoring columns — switch labels based on header mode */}
+                {headerMode === 'pitcher' ? (
+                  <>
+                    <SortHeader label="IP" sortKey="ip" />
+                    <SortHeader label="K" sortKey="so" />
+                    <SortHeader label="W" sortKey="w" />
+                    <SortHeader label="SV" sortKey="sv" />
+                    <SortHeader label="HLD" sortKey="hld" />
+                  </>
+                ) : headerMode === 'batter' ? (
+                  <>
+                    <SortHeader label="R" sortKey="r" />
+                    <SortHeader label="TB" sortKey="tb" />
+                    <SortHeader label="BB" sortKey="bb" />
+                    <SortHeader label="RBI" sortKey="rbi" />
+                    <SortHeader label="SB" sortKey="sb" />
+                  </>
+                ) : (
+                  <>
+                    <span className="text-right flex flex-col leading-tight"><SortHeader label="R" sortKey="r" align="right" /><SortHeader label="IP" sortKey="ip" align="right" className="text-white/20 hover:text-white/50" /></span>
+                    <span className="text-right flex flex-col leading-tight"><SortHeader label="TB" sortKey="tb" align="right" /><SortHeader label="K" sortKey="so" align="right" className="text-white/20 hover:text-white/50" /></span>
+                    <span className="text-right flex flex-col leading-tight"><SortHeader label="BB" sortKey="bb" align="right" /><SortHeader label="W" sortKey="w" align="right" className="text-white/20 hover:text-white/50" /></span>
+                    <span className="text-right flex flex-col leading-tight"><SortHeader label="RBI" sortKey="rbi" align="right" /><SortHeader label="SV" sortKey="sv" align="right" className="text-white/20 hover:text-white/50" /></span>
+                    <span className="text-right flex flex-col leading-tight"><SortHeader label="SB" sortKey="sb" align="right" /><SortHeader label="HLD" sortKey="hld" align="right" className="text-white/20 hover:text-white/50" /></span>
+                  </>
+                )}
+                {/* Separator */}
+                <span></span>
+                {/* 4 traditional columns */}
+                {headerMode === 'pitcher' ? (
+                  <>
+                    <SortHeader label="ERA" sortKey="era" className="text-white/25 hover:text-white/50" />
+                    <SortHeader label="WHIP" sortKey="whip" className="text-white/25 hover:text-white/50" />
+                    <SortHeader label="K/9" sortKey="kper9" className="text-white/25 hover:text-white/50" />
+                    <SortHeader label="QS" sortKey="qs" className="text-white/25 hover:text-white/50" />
+                  </>
+                ) : headerMode === 'batter' ? (
+                  <>
+                    <SortHeader label="AVG" sortKey="avg" className="text-white/25 hover:text-white/50" />
+                    <SortHeader label="OPS" sortKey="ops" className="text-white/25 hover:text-white/50" />
+                    <SortHeader label="HR" sortKey="hr" className="text-white/25 hover:text-white/50" />
+                    <SortHeader label="SB" sortKey="sb" className="text-white/25 hover:text-white/50" />
+                  </>
+                ) : (
+                  <>
+                    <span className="text-right flex flex-col leading-tight"><SortHeader label="AVG" sortKey="avg" className="text-white/25 hover:text-white/50" /><SortHeader label="ERA" sortKey="era" className="text-white/15 hover:text-white/50" /></span>
+                    <span className="text-right flex flex-col leading-tight"><SortHeader label="OPS" sortKey="ops" className="text-white/25 hover:text-white/50" /><SortHeader label="WHIP" sortKey="whip" className="text-white/15 hover:text-white/50" /></span>
+                    <span className="text-right flex flex-col leading-tight"><SortHeader label="HR" sortKey="hr" className="text-white/25 hover:text-white/50" /><SortHeader label="K/9" sortKey="kper9" className="text-white/15 hover:text-white/50" /></span>
+                    <span className="text-right flex flex-col leading-tight"><SortHeader label="SB" sortKey="sb" className="text-white/25 hover:text-white/50" /><SortHeader label="QS" sortKey="qs" className="text-white/15 hover:text-white/50" /></span>
+                  </>
+                )}
+                {/* Tag column */}
+                <span></span>
               </div>
-            )}
+            </div>
+
+            <div className="max-w-[1050px] mx-auto w-full pb-4">
+              {displayPlayers.map((player, i) => (
+                <PlayerRow
+                  key={player.id} player={player} rank={i + 1}
+                  onDraft={(id) => store.draftPlayer(id, myNum ?? 0)}
+                  onUndraft={(id) => store.undraftPlayer(id)}
+                  onRightClick={handleRightClick}
+                  onNameClick={(p) => setCardPlayer(p)}
+                  showRole={player.pos === 'P'}
+                  isRecommended={recIds.has(player.id)}
+                  recRank={recommendations.findIndex(r => r.id === player.id) + 1}
+                  pana={panaMap[player.id] || 0}
+                  prevTier={i > 0 ? displayPlayers[i - 1].tier : undefined}
+                  hasNews={newsStore.hasNewsForPlayer(player.id)}
+                  newsSeverity={newsStore.topSeverityForPlayer(player.id)}
+                  myTeamNumber={myNum}
+                  battingOrder={player.pos !== 'P' ? (openingDayData.battingOrder as Record<string, number>)[player.name] : undefined}
+                  rotationNumber={player.pos === 'P' ? (openingDayData.rotation as Record<string, number>)[player.name] : undefined}
+                />
+              ))}
+              {displayPlayers.length === 0 && (
+                <div className="p-8 text-center text-bsb-dim">
+                  {searchQuery ? `No players found for "${searchQuery}"` : 'No players available'}
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Hint bar — collapsible */}
@@ -497,32 +570,33 @@ export default function Home() {
         </main>
 
         {/* ── RIGHT SIDEBAR ── */}
-        <aside className="w-80 bg-bsb-dark border-l border-white/10 overflow-y-auto hidden xl:block">
+        <aside className={`fixed inset-y-0 right-0 w-[320px] bg-bsb-dark/95 backdrop-blur-2xl border-l border-white/10 overflow-y-auto transition-transform transform z-[60] xl:relative xl:translate-x-0 xl:bg-bsb-dark/60 xl:z-40 ${showRightSidebar ? 'translate-x-0 shadow-[-10px_0_30px_rgba(0,0,0,0.8)]' : 'translate-x-full xl:shadow-[-10px_0_30px_rgba(0,0,0,0.3)]'}`}>
+          <div className="flex justify-between items-center p-3 xl:hidden border-b border-white/10 sticky top-0 bg-bsb-dark/95 z-20">
+            <h2 className="text-sm font-bold text-white uppercase tracking-wider">Draft Rosters</h2>
+            <button className="text-white/50 hover:text-white" onClick={() => setShowRightSidebar(false)}>✕</button>
+          </div>
           {/* Tab switcher */}
-          <div className="flex border-b border-white/10 sticky top-0 bg-bsb-dark z-10">
+          <div className="flex border-b border-white/10 sticky xl:top-0 bg-bsb-dark/80 backdrop-blur-md z-10">
             <button
               onClick={() => setRightPanel('myteam')}
-              className={`flex-1 px-3 py-2 text-xs font-bold uppercase tracking-wider transition-all ${
-                rightPanel === 'myteam'
-                  ? 'text-bsb-gold border-b-2 border-bsb-gold'
-                  : 'text-bsb-dim hover:text-white'
-              }`}
+              className={`flex-1 px-3 py-2 text-xs font-bold uppercase tracking-wider transition-all ${rightPanel === 'myteam'
+                ? 'text-bsb-gold border-b-2 border-bsb-gold'
+                : 'text-bsb-dim hover:text-white'
+                }`}
             >{TEAM_NAMES[myNum ?? 0]} ({myTeamPlayers.length})</button>
             <button
               onClick={() => setRightPanel('allteams')}
-              className={`flex-1 px-3 py-2 text-xs font-bold uppercase tracking-wider transition-all ${
-                rightPanel === 'allteams'
-                  ? 'text-bsb-accent border-b-2 border-bsb-accent'
-                  : 'text-bsb-dim hover:text-white'
-              }`}
+              className={`flex-1 px-3 py-2 text-xs font-bold uppercase tracking-wider transition-all ${rightPanel === 'allteams'
+                ? 'text-bsb-accent border-b-2 border-bsb-accent'
+                : 'text-bsb-dim hover:text-white'
+                }`}
             >All Teams</button>
             <button
               onClick={() => setRightPanel('news')}
-              className={`flex-1 px-3 py-2 text-xs font-bold uppercase tracking-wider transition-all ${
-                rightPanel === 'news'
-                  ? 'text-blue-400 border-b-2 border-blue-400'
-                  : 'text-bsb-dim hover:text-white'
-              }`}
+              className={`flex-1 px-3 py-2 text-xs font-bold uppercase tracking-wider transition-all ${rightPanel === 'news'
+                ? 'text-blue-400 border-b-2 border-blue-400'
+                : 'text-bsb-dim hover:text-white'
+                }`}
             >News {newsStore.news.length > 0 && <span className="text-white/30 ml-0.5">({newsStore.news.length})</span>}</button>
           </div>
 
