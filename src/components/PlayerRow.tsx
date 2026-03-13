@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Player } from '@/hooks/useDraftStore'
 import { PosBadge } from './PosBadge'
 import { GRID_COLS, tierRowBg, teamAbbrev } from './constants'
@@ -10,6 +10,21 @@ const advBatMap = Object.fromEntries(
 const advPitMap = Object.fromEntries(
   (advancedStatsData.pitchers as any[]).map(p => [p.id, p['2025'] || {}])
 )
+
+function formatPct(value?: number | null, scale = 1, digits = 0): string {
+  if (value === undefined || value === null) return '—'
+  return `${(value * scale).toFixed(digits)}%`
+}
+
+function formatDecimal(value?: number | null, digits = 1): string {
+  if (value === undefined || value === null) return '—'
+  return value.toFixed(digits)
+}
+
+function formatAvg(value?: number | null): string {
+  if (value === undefined || value === null) return '.000'
+  return value.toFixed(3).replace(/^0\./, '.')
+}
 
 export function PlayerRow({
   player, rank, onDraft, onUndraft, onRightClick, onNameClick, showRole, isRecommended, recRank, pana, prevTier, hasNews, newsSeverity, myTeamNumber, battingOrder, rotationNumber
@@ -35,12 +50,14 @@ export function PlayerRow({
 
   // Animation state for drafting
   const [justDrafted, setJustDrafted] = useState(false)
-  const [prevDrafted, setPrevDrafted] = useState(player.drafted)
+  const prevDraftedRef = useRef(player.drafted)
 
-  if (player.drafted !== prevDrafted) {
-    if (player.drafted) setJustDrafted(true)
-    setPrevDrafted(player.drafted)
-  }
+  useEffect(() => {
+    if (player.drafted && !prevDraftedRef.current) {
+      setJustDrafted(true)
+    }
+    prevDraftedRef.current = player.drafted
+  }, [player.drafted])
 
   useEffect(() => {
     if (justDrafted) {
@@ -93,25 +110,25 @@ export function PlayerRow({
         )}
       </span>
       {/* Name + rec badge — clicking the name opens the player card */}
-      <span className={`text-sm truncate min-w-0 pr-1 flex items-center gap-1 ${player.drafted ? 'text-bsb-dim' : 'text-white'}`} style={{ fontFamily: 'inherit' }}>
+      <span className={`text-sm min-w-0 pr-1 flex items-center gap-1 ${player.drafted ? 'text-bsb-dim' : 'text-white'}`} style={{ fontFamily: 'inherit' }}>
         {hasNews && !player.drafted && (
           <span className={`w-2 h-2 rounded-full shrink-0 ${newsSeverity === 'high' ? 'bg-red-400' :
             newsSeverity === 'medium' ? 'bg-orange-400' : 'bg-blue-400'
             }`} title="Has recent news" />
         )}
         <span
-          className="truncate hover:text-bsb-gold hover:underline cursor-pointer transition-colors"
+          className="truncate min-w-0 hover:text-bsb-gold hover:underline cursor-pointer transition-colors"
           onClick={(e) => { e.stopPropagation(); onNameClick(player) }}
           title="View player card"
         >{player.name}</span>
         {!player.drafted && battingOrder !== undefined && (
           <span className="text-[10px] px-1 rounded bg-amber-500/15 text-amber-400/80 font-bold shrink-0 tabular-nums" title={`Projected batting ${battingOrder} spot`}>
-            🏏{battingOrder}
+            BO{battingOrder}
           </span>
         )}
         {!player.drafted && rotationNumber !== undefined && (
           <span className="text-[10px] px-1 rounded bg-sky-500/15 text-sky-400/80 font-bold shrink-0 tabular-nums" title={`Projected #${rotationNumber} starter`}>
-            ⚾{rotationNumber}
+            SP{rotationNumber}
           </span>
         )}
         {isRecommended && !player.drafted && (
@@ -148,19 +165,19 @@ export function PlayerRow({
       {!isPitcher ? (
         <>
           <span className="text-right text-white/80" title="PA">{player.pa || 0}</span>
-          <span className="text-right text-white/80" title="AVG">{player.avg?.toFixed(3).replace(/^0\./, '.') || '.000'}</span>
+          <span className="text-right text-white/80" title="AVG">{formatAvg(player.avg)}</span>
           <span className="text-right text-white/80" title="R">{player.r || 0}</span>
           <span className="text-right text-white/80" title="BB">{player.bb || 0}</span>
           <span className="text-right text-white/80" title="HR">{player.hr || 0}</span>
           <span className="text-right text-white/80" title="RBI">{player.rbi || 0}</span>
           <span className="text-right text-white/80" title="SB">{player.sb || 0}</span>
-          <span className="text-right text-white/80" title="K%">{advStats.k_pct ? `${(advStats.k_pct).toFixed(0)}%` : '—'}</span>
-          <span className="text-right text-white/80" title="EV">{advStats.exit_velo?.toFixed(1) || '—'}</span>
-          <span className="text-right text-white/80" title="HH%">{advStats.hard_hit_pct ? `${(advStats.hard_hit_pct * 100).toFixed(0)}%` : '—'}</span>
-          <span className="text-right text-white/80" title="BABIP">{advStats.babip?.toFixed(3).replace(/^0\./, '.') || '—'}</span>
-          <span className="text-right text-white/80" title="wRC+">{advStats.wrc_plus?.toFixed(0) || '—'}</span>
-          <span className="text-right text-white/80" title="Whiff%">{advStats.whiff_pct ? `${(advStats.whiff_pct).toFixed(0)}%` : '—'}</span>
-          <span className="text-transparent">_</span>
+          <span className="text-right text-white/80" title="K%">{formatPct(advStats.k_pct)}</span>
+          <span className="text-right text-white/80" title="EV">{formatDecimal(advStats.exit_velo)}</span>
+          <span className="text-right text-white/80" title="HH%">{formatPct(advStats.hard_hit_pct, 100)}</span>
+          <span className="text-right text-white/80" title="BABIP">{formatAvg(advStats.babip)}</span>
+          <span className="text-right text-white/80" title="wRC+">{formatDecimal(advStats.wrc_plus, 0)}</span>
+          <span className="text-right text-white/80" title="Whiff%">{formatPct(advStats.whiff_pct)}</span>
+          <span aria-hidden="true">&nbsp;</span>
         </>
       ) : (
         <>
@@ -171,13 +188,13 @@ export function PlayerRow({
           <span className="text-right text-white/80" title="K">{player.so || 0}</span>
           <span className="text-right text-white/80" title="CG">{player.cg || 0}</span>
           <span className="text-right text-white/80" title="IRS">{player.irstr?.toFixed(1) || 0}</span>
-          <span className="text-right text-white/80" title="Velo">{advStats.fb_velo?.toFixed(1) || '—'}</span>
-          <span className="text-right text-white/80" title="Stuff+">{advStats.stuff_plus?.toFixed(0) || '—'}</span>
-          <span className="text-right text-white/80" title="Loc+">{advStats.location_plus?.toFixed(0) || '—'}</span>
-          <span className="text-right text-white/80" title="xERA">{advStats.xera?.toFixed(2) || '—'}</span>
-          <span className="text-right text-white/80" title="HH%">{advStats.hard_hit_against ? `${(advStats.hard_hit_against * 100).toFixed(0)}%` : '—'}</span>
-          <span className="text-right text-white/80" title="BRL%">{advStats.barrel_against ? `${(advStats.barrel_against * 100).toFixed(1)}%` : '—'}</span>
-          <span className="text-right text-white/80" title="Chase%">{advStats.chase_rate ? `${(advStats.chase_rate).toFixed(0)}%` : '—'}</span>
+          <span className="text-right text-white/80" title="Velo">{formatDecimal(advStats.fb_velo)}</span>
+          <span className="text-right text-white/80" title="Stuff+">{formatDecimal(advStats.stuff_plus, 0)}</span>
+          <span className="text-right text-white/80" title="Loc+">{formatDecimal(advStats.location_plus, 0)}</span>
+          <span className="text-right text-white/80" title="xERA">{formatDecimal(advStats.xera, 2)}</span>
+          <span className="text-right text-white/80" title="HH%">{formatPct(advStats.hard_hit_against, 100)}</span>
+          <span className="text-right text-white/80" title="BRL%">{formatPct(advStats.barrel_against, 100, 1)}</span>
+          <span className="text-right text-white/80" title="Chase%">{formatPct(advStats.chase_rate)}</span>
         </>
       )}
       {/* Draft tag */}
