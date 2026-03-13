@@ -91,6 +91,15 @@ export type DraftState = {
 const STORAGE_KEY = 'bsb-draft-state'
 const TEAM_KEY = 'bsb-my-team'
 
+function sanitizeTeamAbbrev(team: string): string {
+  if (!team) return ''
+  // Handle scraped anchor tags like <a ...>BOS</a>
+  const anchorMatch = team.match(/>([^<]+)</)
+  if (anchorMatch?.[1]) return anchorMatch[1].trim().toUpperCase()
+  // Strip any remaining HTML and normalize
+  return team.replace(/<[^>]*>/g, '').trim().toUpperCase()
+}
+
 export function useDraftStore() {
   const [batters, setBatters] = useState<Player[]>(() => {
     const analysisMap = customAnalysisData as Record<string, any>
@@ -98,7 +107,12 @@ export function useDraftStore() {
   })
   const [pitchers, setPitchers] = useState<Player[]>(() => {
     const analysisMap = customAnalysisData as Record<string, any>
-    return (pitchersData as any[]).map(p => ({ ...p, ...(analysisMap[p.id] || {}), drafted: false }))
+    return (pitchersData as any[]).map(p => ({
+      ...p,
+      team: sanitizeTeamAbbrev(p.team),
+      ...(analysisMap[p.id] || {}),
+      drafted: false,
+    }))
   })
   const [draftState, setDraftState] = useState<DraftState>({
     phase: 'pre-draft',

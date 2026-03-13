@@ -19,6 +19,19 @@ import { useNewsStore } from '@/hooks/useNewsStore'
 import { NewsFeed } from '@/components/NewsFeed'
 import { MyPicksPanel } from '@/components/MyPicksPanel'
 import openingDayData from '@/data/openingDay.json'
+import advancedStatsData from '@/data/advancedStats.json'
+
+const advBatMap = Object.fromEntries(
+  (advancedStatsData.batters as any[]).map(b => [b.id, b['2025'] || {}])
+)
+const advPitMap = Object.fromEntries(
+  (advancedStatsData.pitchers as any[]).map(p => [p.id, p['2025'] || {}])
+)
+
+const advancedKeys = new Set([
+  'fb_velo', 'stuff_plus', 'location_plus', 'xera', 'hard_hit_against', 'barrel_against', 'chase_rate',
+  'exit_velo', 'hard_hit_pct', 'babip', 'wrc_plus', 'whiff_pct', 'k_pct'
+])
 
 // ─────────────────────────────────────────
 // MAIN APP
@@ -96,9 +109,22 @@ export default function Home() {
     }
 
     if (sortConfig) {
+      const getSortableValue = (player: Player, key: string): number => {
+        const baseVal = (player as any)[key]
+        if (typeof baseVal === 'number') return baseVal
+
+        if (advancedKeys.has(key)) {
+          const advStats = player.pos === 'P' ? (advPitMap[player.id] || {}) : (advBatMap[player.id] || {})
+          const advVal = advStats[key]
+          return typeof advVal === 'number' ? advVal : 0
+        }
+
+        return Number(baseVal) || 0
+      }
+
       players.sort((a, b) => {
-        const valA = (a as any)[sortConfig.key] ?? 0
-        const valB = (b as any)[sortConfig.key] ?? 0
+        const valA = getSortableValue(a, sortConfig.key)
+        const valB = getSortableValue(b, sortConfig.key)
         if (sortConfig.direction === 'desc') return valB - valA
         return valA - valB
       })
