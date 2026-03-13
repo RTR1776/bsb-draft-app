@@ -93,25 +93,25 @@ export function PlayerRow({
         )}
       </span>
       {/* Name + rec badge — clicking the name opens the player card */}
-      <span className={`text-sm truncate min-w-0 pr-1 flex items-center gap-1 ${player.drafted ? 'text-bsb-dim' : 'text-white'}`} style={{ fontFamily: 'inherit' }}>
+      <span className={`text-sm min-w-0 pr-1 flex items-center gap-1 ${player.drafted ? 'text-bsb-dim' : 'text-white'}`} style={{ fontFamily: 'inherit' }}>
         {hasNews && !player.drafted && (
           <span className={`w-2 h-2 rounded-full shrink-0 ${newsSeverity === 'high' ? 'bg-red-400' :
             newsSeverity === 'medium' ? 'bg-orange-400' : 'bg-blue-400'
             }`} title="Has recent news" />
         )}
         <span
-          className="truncate hover:text-bsb-gold hover:underline cursor-pointer transition-colors"
+          className="truncate min-w-0 hover:text-bsb-gold hover:underline cursor-pointer transition-colors"
           onClick={(e) => { e.stopPropagation(); onNameClick(player) }}
           title="View player card"
         >{player.name}</span>
         {!player.drafted && battingOrder !== undefined && (
           <span className="text-[10px] px-1 rounded bg-amber-500/15 text-amber-400/80 font-bold shrink-0 tabular-nums" title={`Projected batting ${battingOrder} spot`}>
-            🏏{battingOrder}
+            BO{battingOrder}
           </span>
         )}
         {!player.drafted && rotationNumber !== undefined && (
           <span className="text-[10px] px-1 rounded bg-sky-500/15 text-sky-400/80 font-bold shrink-0 tabular-nums" title={`Projected #${rotationNumber} starter`}>
-            ⚾{rotationNumber}
+            SP{rotationNumber}
           </span>
         )}
         {isRecommended && !player.drafted && (
@@ -160,7 +160,7 @@ export function PlayerRow({
           <span className="text-right text-white/80" title="BABIP">{advStats.babip?.toFixed(3).replace(/^0\./, '.') || '—'}</span>
           <span className="text-right text-white/80" title="wRC+">{advStats.wrc_plus?.toFixed(0) || '—'}</span>
           <span className="text-right text-white/80" title="Whiff%">{advStats.whiff_pct ? `${(advStats.whiff_pct).toFixed(0)}%` : '—'}</span>
-          <span className="text-transparent">_</span>
+          <span aria-hidden="true">&nbsp;</span>
         </>
       ) : (
         <>

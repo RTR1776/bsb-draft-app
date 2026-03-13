@@ -463,7 +463,7 @@ export default function Home() {
                     <span className="text-right flex flex-col leading-tight"><SortHeader label="BABIP" sortKey="babip" align="right" /><SortHeader label="xERA" sortKey="xera" align="right" className="text-white/20 hover:text-white/50" /></span>
                     <span className="text-right flex flex-col leading-tight"><SortHeader label="wRC+" sortKey="wrc_plus" align="right" /><SortHeader label="HH%" sortKey="hard_hit_against" align="right" className="text-white/20 hover:text-white/50" /></span>
                     <span className="text-right flex flex-col leading-tight"><SortHeader label="Whiff%" sortKey="whiff_pct" align="right" /><SortHeader label="BRL%" sortKey="barrel_against" align="right" className="text-white/20 hover:text-white/50" /></span>
-                    <span className="text-right flex flex-col leading-tight"><span className="text-transparent">_</span><SortHeader label="Chase%" sortKey="chase_rate" align="right" className="text-white/20 hover:text-white/50" /></span>
+                    <span className="text-right flex flex-col leading-tight"><span aria-hidden="true">&nbsp;</span><SortHeader label="Chase%" sortKey="chase_rate" align="right" className="text-white/20 hover:text-white/50" /></span>
                   </>
                 )}
                 {/* Tag column */}
