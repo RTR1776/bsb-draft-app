@@ -103,7 +103,12 @@ function sanitizeTeamAbbrev(team: string): string {
 export function useDraftStore() {
   const [batters, setBatters] = useState<Player[]>(() => {
     const analysisMap = customAnalysisData as Record<string, any>
-    return (battersData as any[]).map(b => ({ ...b, ...(analysisMap[b.id] || {}), drafted: false }))
+    return (battersData as any[]).map(b => ({
+      ...b,
+      team: sanitizeTeamAbbrev(b.team),
+      ...(analysisMap[b.id] || {}),
+      drafted: false,
+    }))
   })
   const [pitchers, setPitchers] = useState<Player[]>(() => {
     const analysisMap = customAnalysisData as Record<string, any>
