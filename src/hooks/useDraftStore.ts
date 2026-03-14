@@ -60,6 +60,8 @@ export type Player = {
   isNewSetup?: boolean
   ageCurve?: string
   ageAdj?: number
+  adp?: number | null
+  watched?: boolean
 }
 
 export type DraftCategory = {
@@ -268,6 +270,15 @@ export function useDraftStore() {
     })
   }, [draftState.draftLog])
 
+  const toggleWatch = useCallback((playerId: string) => {
+    setBatters(prev => prev.map(b =>
+      b.id === playerId ? { ...b, watched: !b.watched } : b
+    ))
+    setPitchers(prev => prev.map(p =>
+      p.id === playerId ? { ...p, watched: !p.watched } : p
+    ))
+  }, [])
+
   const setMyTemplate = useCallback((t: string) => {
     setDraftState(prev => ({ ...prev, myTemplate: prev.myTemplate === t ? null : t }))
   }, [])
@@ -454,6 +465,7 @@ export function useDraftStore() {
     setMyTeamNumber,
     draftPlayer,
     undraftPlayer,
+    toggleWatch,
     setMyTemplate,
     setActiveCategory,
     setPhase,

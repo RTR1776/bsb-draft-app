@@ -435,6 +435,7 @@ export default function Home() {
                 <span className="text-center">Pos</span>
                 <span>Player</span>
                 <span className="text-center">Tm</span>
+                <SortHeader label="ADP" sortKey="adp" className="text-violet-400/70 hover:text-violet-400" />
                 <SortHeader label="Pts" sortKey="fpts" className="text-bsb-gold hover:text-bsb-gold/80" />
                 <SortHeader label="TWV" sortKey="twv" className="text-sky-400/80 hover:text-sky-400" />
                 <SortHeader label="Cons" sortKey="consistencyScore" className="text-white/50 hover:text-white/80" />
@@ -505,6 +506,7 @@ export default function Home() {
                   onUndraft={(id) => store.undraftPlayer(id)}
                   onRightClick={handleRightClick}
                   onNameClick={(p) => setCardPlayer(p)}
+                  onToggleWatch={(id) => store.toggleWatch(id)}
                   showRole={player.pos === 'P'}
                   isRecommended={recIds.has(player.id)}
                   recRank={recommendations.findIndex(r => r.id === player.id) + 1}

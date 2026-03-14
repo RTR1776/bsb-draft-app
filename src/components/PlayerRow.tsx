@@ -27,13 +27,14 @@ function formatAvg(value?: number | null): string {
 }
 
 export function PlayerRow({
-  player, rank, onDraft, onUndraft, onRightClick, onNameClick, showRole, isRecommended, recRank, pana, prevTier, hasNews, newsSeverity, myTeamNumber, battingOrder, rotationNumber
+  player, rank, onDraft, onUndraft, onRightClick, onNameClick, onToggleWatch, showRole, isRecommended, recRank, pana, prevTier, hasNews, newsSeverity, myTeamNumber, battingOrder, rotationNumber
 }: {
   player: Player; rank: number
   onDraft: (id: string) => void
   onUndraft: (id: string) => void
   onRightClick: (e: React.MouseEvent, player: Player) => void
   onNameClick: (player: Player) => void
+  onToggleWatch?: (id: string) => void
   showRole?: boolean
   isRecommended?: boolean
   recRank?: number
@@ -79,7 +80,16 @@ export function PlayerRow({
   // Recommendation left border
   const recBorder = isRecommended
     ? recRank === 1 ? 'border-l-2 border-l-bsb-gold' : 'border-l-2 border-l-white/30'
-    : ''
+    : player.watched && !player.drafted ? 'border-l-2 border-l-emerald-400' : ''
+
+  // Watched row highlight
+  const watchedBg = player.watched && !player.drafted ? 'bg-emerald-500/[0.08]' : ''
+
+  // ADP value color - show how ADP compares to our rank
+  const adpColor = !player.adp ? 'text-white/20' :
+    player.adp < rank ? 'text-green-400' :  // undervalued by ADP (ADP higher than our rank)
+    player.adp > rank + 20 ? 'text-red-400' : // overvalued by ADP
+    'text-white/50'
 
   // Tier divider — show border when tier changes
   const showTierDivider = prevTier !== undefined && player.tier !== prevTier && !player.drafted
@@ -89,7 +99,7 @@ export function PlayerRow({
   return (
     <div
       className={`player-row grid items-center px-4 py-1.5 tabular-nums text-sm font-mono w-full group hover:bg-white/5 transition-colors cursor-pointer ${player.drafted ? 'drafted' : ''
-        } ${tierBg} ${recBorder} ${rank % 2 === 0 && !tierBg ? 'bg-white/[0.02]' : ''} ${showTierDivider ? 'border-t border-white/10' : ''}`}
+        } ${watchedBg || tierBg} ${recBorder} ${rank % 2 === 0 && !tierBg && !watchedBg ? 'bg-white/[0.02]' : ''} ${showTierDivider ? 'border-t border-white/10' : ''}`}
       style={{ gridTemplateColumns: GRID_COLS }}
       onClick={() => player.drafted ? onUndraft(player.id) : onDraft(player.id)}
       onContextMenu={(e) => {
@@ -140,6 +150,11 @@ export function PlayerRow({
       </span>
       {/* Team */}
       <span className="text-[11px] text-bsb-dim text-center">{player.team}</span>
+      {/* ADP */}
+      <span className={`text-right text-xs font-bold ${player.drafted ? 'text-white/15' : adpColor}`}
+        title={player.adp ? `Consensus ADP: ${player.adp}` : 'No ADP data'}>
+        {player.adp || '—'}
+      </span>
       {/* FPTS */}
       <span className={`text-right text-[15px] font-bold transition-all ${player.drafted ? 'text-white/20 font-normal' : 'text-bsb-gold'}`}>
         {player.fpts}
@@ -197,15 +212,26 @@ export function PlayerRow({
           <span className="text-right text-white/80" title="Chase%">{formatPct(advStats.chase_rate)}</span>
         </>
       )}
-      {/* Draft tag */}
-      <span className="flex justify-end">
-        {player.drafted && player.draftedBy !== undefined && (
+      {/* Draft tag / Watch toggle */}
+      <span className="flex justify-end items-center gap-1">
+        {player.drafted && player.draftedBy !== undefined ? (
           <span className={`text-[10px] px-1.5 rounded font-bold ${player.draftedBy === myNum
             ? 'bg-bsb-gold/20 text-bsb-gold'
             : 'bg-bsb-accent/20 text-bsb-accent'
             }`}>
             {player.draftedBy === myNum ? 'ME' : teamAbbrev(player.draftedBy)}
           </span>
+        ) : (
+          <button
+            className={`text-[11px] px-1 rounded transition-colors ${player.watched
+              ? 'bg-emerald-500/25 text-emerald-400 hover:bg-red-500/20 hover:text-red-400'
+              : 'text-white/15 hover:text-emerald-400 hover:bg-emerald-500/10'
+              }`}
+            onClick={(e) => { e.stopPropagation(); onToggleWatch?.(player.id) }}
+            title={player.watched ? 'Remove from watchlist' : 'Add to watchlist'}
+          >
+            {player.watched ? '★' : '☆'}
+          </button>
         )}
       </span>
     </div>
