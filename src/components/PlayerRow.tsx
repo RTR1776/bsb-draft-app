@@ -80,10 +80,10 @@ export function PlayerRow({
   // Recommendation left border
   const recBorder = isRecommended
     ? recRank === 1 ? 'border-l-2 border-l-bsb-gold' : 'border-l-2 border-l-white/30'
-    : player.watched && !player.drafted ? 'border-l-2 border-l-emerald-400' : ''
+    : player.watched && !player.drafted ? 'border-l-3 border-l-lime-400' : ''
 
   // Watched row highlight
-  const watchedBg = player.watched && !player.drafted ? 'bg-emerald-500/[0.08]' : ''
+  const watchedBg = player.watched && !player.drafted ? 'bg-lime-400/[0.15]' : ''
 
   // ADP value color - show how ADP compares to our rank
   const adpColor = !player.adp ? 'text-white/20' :
@@ -224,8 +224,8 @@ export function PlayerRow({
         ) : (
           <button
             className={`text-[11px] px-1 rounded transition-colors ${player.watched
-              ? 'bg-emerald-500/25 text-emerald-400 hover:bg-red-500/20 hover:text-red-400'
-              : 'text-white/15 hover:text-emerald-400 hover:bg-emerald-500/10'
+              ? 'bg-lime-400/30 text-lime-300 hover:bg-red-500/20 hover:text-red-400'
+              : 'text-white/15 hover:text-lime-300 hover:bg-lime-400/10'
               }`}
             onClick={(e) => { e.stopPropagation(); onToggleWatch?.(player.id) }}
             title={player.watched ? 'Remove from watchlist' : 'Add to watchlist'}
