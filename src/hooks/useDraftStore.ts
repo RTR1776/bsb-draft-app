@@ -92,6 +92,9 @@ export type DraftState = {
 
 const STORAGE_KEY = 'bsb-draft-state'
 const TEAM_KEY = 'bsb-my-team'
+// Bump this version whenever JSON draft data changes to force localStorage refresh
+const DATA_VERSION = '2'
+const VERSION_KEY = 'bsb-data-version'
 
 function sanitizeTeamAbbrev(team: string): string {
   if (!team) return ''
@@ -103,9 +106,17 @@ function sanitizeTeamAbbrev(team: string): string {
 }
 
 // Read saved draft state from localStorage synchronously (avoids race conditions)
+// Returns null if no saved state, version mismatch, or on server
 function loadSavedDraftState(): { ids: Set<string>; details: Record<string, { team?: number; category?: string }>; draftState: Partial<DraftState> } | null {
   if (typeof window === 'undefined') return null
   try {
+    // If data version changed, wipe stale localStorage and use JSON defaults
+    const storedVersion = localStorage.getItem(VERSION_KEY)
+    if (storedVersion !== DATA_VERSION) {
+      localStorage.removeItem(STORAGE_KEY)
+      localStorage.setItem(VERSION_KEY, DATA_VERSION)
+      return null
+    }
     const saved = localStorage.getItem(STORAGE_KEY)
     if (!saved) return null
     const parsed = JSON.parse(saved)
@@ -209,6 +220,7 @@ export function useDraftStore() {
         draftedIds,
         draftedDetails,
       }))
+      localStorage.setItem(VERSION_KEY, DATA_VERSION)
     } catch (e) {
       // localStorage not available
     }
