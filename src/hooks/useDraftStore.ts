@@ -1,5 +1,5 @@
 'use client'
-import { useState, useCallback, useEffect, useMemo } from 'react'
+import { useState, useCallback, useEffect, useMemo, useRef } from 'react'
 import battersData from '@/data/batters.json'
 import pitchersData from '@/data/pitchers.json'
 import templatesData from '@/data/templates.json'
@@ -102,33 +102,61 @@ function sanitizeTeamAbbrev(team: string): string {
   return team.replace(/<[^>]*>/g, '').trim().toUpperCase()
 }
 
+// Read saved draft state from localStorage synchronously (avoids race conditions)
+function loadSavedDraftState(): { ids: Set<string>; details: Record<string, { team?: number; category?: string }>; draftState: Partial<DraftState> } | null {
+  if (typeof window === 'undefined') return null
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY)
+    if (!saved) return null
+    const parsed = JSON.parse(saved)
+    if (!parsed.draftedIds || parsed.draftedIds.length === 0) return null
+    return {
+      ids: new Set<string>(parsed.draftedIds),
+      details: parsed.draftedDetails || {},
+      draftState: parsed.draftState || {},
+    }
+  } catch { return null }
+}
+
 export function useDraftStore() {
+  // Load saved state once at module level for initialization
+  const savedRef = useRef(loadSavedDraftState())
+
   const [batters, setBatters] = useState<Player[]>(() => {
     const analysisMap = customAnalysisData as Record<string, any>
+    const saved = savedRef.current
     return (battersData as any[]).map(b => ({
       ...b,
       team: sanitizeTeamAbbrev(b.team),
       ...(analysisMap[b.id] || {}),
-      drafted: false,
+      drafted: saved ? saved.ids.has(b.id) : (b.drafted || false),
+      draftedBy: saved ? saved.details[b.id]?.team : b.draftedBy,
+      draftCategory: saved ? saved.details[b.id]?.category : b.draftCategory,
     }))
   })
   const [pitchers, setPitchers] = useState<Player[]>(() => {
     const analysisMap = customAnalysisData as Record<string, any>
+    const saved = savedRef.current
     return (pitchersData as any[]).map(p => ({
       ...p,
       team: sanitizeTeamAbbrev(p.team),
       ...(analysisMap[p.id] || {}),
-      drafted: false,
+      drafted: saved ? saved.ids.has(p.id) : (p.drafted || false),
+      draftedBy: saved ? saved.details[p.id]?.team : p.draftedBy,
+      draftCategory: saved ? saved.details[p.id]?.category : p.draftCategory,
     }))
   })
-  const [draftState, setDraftState] = useState<DraftState>({
-    phase: 'pre-draft',
-    activeCategory: null,
-    currentRound: 1,
-    currentPick: 1,
-    myTemplate: null,
-    draftLog: [],
-    categoryPicks: {},
+  const [draftState, setDraftState] = useState<DraftState>(() => {
+    const saved = savedRef.current
+    return {
+      phase: (saved?.draftState?.phase as DraftState['phase']) || 'pre-draft',
+      activeCategory: saved?.draftState?.activeCategory ?? null,
+      currentRound: saved?.draftState?.currentRound || 1,
+      currentPick: saved?.draftState?.currentPick || 1,
+      myTemplate: saved?.draftState?.myTemplate ?? null,
+      draftLog: saved?.draftState?.draftLog || [],
+      categoryPicks: saved?.draftState?.categoryPicks || {},
+    }
   })
 
   // My team identity — persisted separately so it survives draft resets
@@ -155,39 +183,8 @@ export function useDraftStore() {
   const categories = draftCategoriesData as DraftCategory[]
   const teamTemplates2026 = (draftOrderData as any).teamTemplates as Record<string, string>
 
-  // Load saved state from localStorage
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY)
-      if (saved) {
-        const parsed = JSON.parse(saved)
-        if (parsed.draftState) {
-          setDraftState(prev => ({
-            ...prev,
-            ...parsed.draftState,
-            categoryPicks: parsed.draftState.categoryPicks || {},
-          }))
-        }
-        if (parsed.draftedIds) {
-          const ids = new Set(parsed.draftedIds)
-          setBatters(prev => prev.map(b => ({
-            ...b,
-            drafted: ids.has(b.id),
-            draftedBy: parsed.draftedDetails?.[b.id]?.team,
-            draftCategory: parsed.draftedDetails?.[b.id]?.category,
-          })))
-          setPitchers(prev => prev.map(p => ({
-            ...p,
-            drafted: ids.has(p.id),
-            draftedBy: parsed.draftedDetails?.[p.id]?.team,
-            draftCategory: parsed.draftedDetails?.[p.id]?.category,
-          })))
-        }
-      }
-    } catch (e) {
-      console.warn('Failed to load draft state:', e)
-    }
-  }, [])
+  // Track whether initial state has been committed (for save guard)
+  const hasLoadedRef = useRef(true)
 
   // Auto-set template from 2026 draft order if not already set
   useEffect(() => {
@@ -197,8 +194,9 @@ export function useDraftStore() {
     }
   }, [myTeamNumber, draftState.myTemplate, teamTemplates2026])
 
-  // Save state to localStorage on changes
+  // Save state to localStorage on changes (skip until load completes)
   useEffect(() => {
+    if (!hasLoadedRef.current) return
     try {
       const all = [...batters, ...pitchers]
       const draftedIds = all.filter(p => p.drafted).map(p => p.id)
